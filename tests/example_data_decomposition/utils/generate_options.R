@@ -8,14 +8,13 @@
 #   * test_suite: name of the calling test suite (used for directory structure)
 #   * name_main_test: identifier of the specific test to generate options for
 #   * path_queue: directory where JSON files will be written
-# - Desc: 
-#   Defines model parameters, expands selected grid options, and writes the 
+# - Desc:
+#   Defines model parameters, expands selected grid options, and writes the
 #   resulting combinations to JSON files ready for execution.
 generate_options <- function(test_suite, name_main_test, path_queue) {
-  
   ## Create the directory (if it does not exist yet)
   mkdir(c(path_queue))
-  
+
   ## Names of the models you want to compare
   # - model_names: used for indexing (no spaces, please)
   # - model_labels: used for plotting
@@ -25,18 +24,16 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
   model_labels <- c(
     "mv", "subspace", "sequential", "direct"
   )
-  
+
   ## Define the color palette
   model_colors <- brewer.pal(length(model_labels), "Set1")
-  
-  ## Options that you want to be common across tests 
+
+  ## Options that you want to be common across tests
   lambda_grid <- 10^seq(-12, 1, by = 1)
   seed <- 1412
-  
-  switch(
-    name_main_test,
+
+  switch(name_main_test,
     test1 = {
-      
       ## Set the desired options
       options <- list(
         model_names = model_names,
@@ -58,10 +55,11 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
           n_nodes_HR_grid = 1000
         ),
         model_options = list(
-          n_comp = 5
+          n_comp = 4
         ),
         data = list(
-          mean = FALSE
+          mean = FALSE,
+          var_pct = c(0.4, 0.3, 0.2, 0.1)
         ),
         noise = list(
           NSR = seq(0, 0.5, length = 5),
@@ -71,7 +69,7 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
           lambda_grid = lambda_grid
         )
       )
-      
+
       ## File naming policy
       name_fun <- function(opts_i, comb_row) {
         paste(
@@ -84,14 +82,14 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
           sep = "_"
         )
       }
-      
+
       ## Expand ONLY the varying options
       options_list <- explode_options(
         options,
         by = options$test_options$varying_options,
         name_fun = name_fun
       )
-      
+
       ## Write JSON files
       write_options_json(
         options_list,
@@ -99,7 +97,6 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
         name_field = "name_test"
       )
     },
-    
     {
       stop(paste("The test", name_main_test, "does not exist"))
     }

@@ -43,10 +43,13 @@ generate_2D_fpca_data <- function(domain, locations,
   n_locs <- nrow(locs)
 
   ## femR Objects To Compute Functional Norm ----
-  # Vh <- FunctionSpace(domain$femr_mesh, fe_order = 1)
-  # u  <- Function(Vh)
-  # Lu <- -laplace(u)  ## Poisson problem
-  # pde <- Pde(Lu, function(points) { return(0 * points[, 1]) })
+  Vh <- FunctionSpace(domain$femr_mesh, fe_order = 1)
+  u <- Function(Vh)
+  Lu <- -laplace(u)
+  force <- function(points) {
+    return(0 * points[, 1])
+  }
+  pde <- Pde(Lu, force)
 
   ## fPCs ----
   loadings_true <- matrix(0, nrow = n_nodes, ncol = n_comp)
@@ -54,8 +57,8 @@ generate_2D_fpca_data <- function(domain, locations,
   for (i in 1:n_comp) {
     ## Generate loading on nodes
     loadings_true[, i] <- loadings_generator(nodes, i)
-    ## Compute l2 norm and normalize
-    norm <- norm_l2(loadings_true[, i]) # , pde$mass())
+    ## Compute L2 norm and normalize
+    norm <- norm_A(loadings_true[, i], pde$mass())
     loadings_true[, i] <- loadings_true[, i] / norm
     ## Evaluate loading at locations and normalize consistently
     loadings_true_locs[, i] <- loadings_generator(locs, i) / norm
@@ -64,9 +67,8 @@ generate_2D_fpca_data <- function(domain, locations,
   ## Scores ----
   ## Compute Scores Standard Deviations
   data_range <- max(loadings_true) - min(loadings_true)
-  sd_s <- 1 / 1:n_comp
-  sd_s <- sd_s / sum(sd_s)
-  sigma_s <- sd_s * data_range
+  sd_s <- test_options$data$var_pct
+  sigma_s <- sqrt(sd_s) * data_range
 
   ## Set seed
   set.seed(seed)
@@ -74,6 +76,16 @@ generate_2D_fpca_data <- function(domain, locations,
   ## Sample scores
   scores_true <- MASS::mvrnorm(n = n_stat_units, mu = rep(0, n_comp), Sigma = diag(sigma_s^2), empirical = T)
 
+  ## Convention: loadings normalised with respect to the l2 norm
+  loadings_norms <- numeric(n_comp)
+  for (i in 1:n_comp) {
+    loadings_norms[i] <- norm_l2(loadings_true_locs[, i])
+    ## Loadings
+    loadings_true[, i] <- loadings_true[, i] / loadings_norms[i]
+    loadings_true_locs[, i] <- loadings_true_locs[, i] / loadings_norms[i]
+    ## Scores
+    scores_true[, i] <- scores_true[, i] * loadings_norms[i]
+  }
   ## Data ----
   X_c_true <- scores_true %*% t(loadings_true)
   X_c_true_locs <- scores_true %*% t(loadings_true_locs)
@@ -122,6 +134,7 @@ generate_2D_fpca_data <- function(domain, locations,
     X_true = X_true,
     X_true_locs = X_true_locs,
     ## Expected results: decomposition
+    loadings_norms = loadings_norms,
     loadings_true = loadings_true,
     loadings_true_locs = loadings_true_locs,
     scores_true = scores_true,
