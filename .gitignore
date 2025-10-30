@@ -1,0 +1,20 @@
+*.RData
+*.Rhistory
+*.DS_Store
+*.txt
+*.pdf
+*.Rproj
+*.csv
+
+# directories to ignore
+results/
+images/
+queue/
+data/*
+cpp/*/fit_model*
+.idea/
+
+# exceptions
+!data/mesh/
+!data/mesh/**
+.Rproj.user
