@@ -36,7 +36,7 @@ done
 
 ## Run time complexity analysis
 cd ../../../../
-RScript tests/$1/post_processing.R $2
+RScript tests/$1/aggregate_results.R $2
 
 
 ###############################################################################

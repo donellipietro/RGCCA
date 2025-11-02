@@ -88,8 +88,19 @@ update_paths <- function(path_list, name_main_test, test_options) {
   path_list$cpp_script <- paste0("cpp/", test_options$cpp_script, "/")
 
   ## Check if the C++ has been compiled
-  if (!file.exists(paste0(path_list$cpp_script, "fit_model"))) {
-    stop(paste0("The C++ model has not been compiled!\n run make compile MODEL=", test_options$cpp_script))
+  ## Check if the C++ has been compiled
+  compiled_files <- list.files(
+    path = path_list$cpp_script,
+    pattern = "^fit_model",   # regex: starts with "fit_model"
+    full.names = TRUE
+  )
+  if (length(compiled_files) == 0) {
+    stop(
+      paste0(
+        "The C++ model has not been compiled!\n",
+        "Run: make compile MODEL=", basename(path_list$cpp_script)
+      )
+    )
   }
 
   return(path_list)

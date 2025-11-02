@@ -11,6 +11,7 @@ CXXFLAGS = -O3 -Wno-psabi -std=c++20 -march=native \
   -I/Users/pietrodonelli/Documents/University/fdaPDE/fdaPDE-cpp/fdaPDE/core \
   -I/opt/homebrew/include/eigen3 \
 
+
 # Targets ----
 .PHONY: help install install_femR build  \
         complile compile_all \

@@ -64,6 +64,39 @@ std_plot_settings_fields <- function() {
 }
 
 
+# Function: std_plot_settings_curves
+# - Args:
+#   * NONE
+# - Desc:
+#   Returns a ggplot2 theme optimized for visualizing curves
+std_plot_settings_curves <- function() {
+  
+  ## Create theme for field visualization
+  standard_plot_settings_fields <- theme_light() +
+    theme(
+      text = element_text(size = 12),
+      plot.title = element_text(
+        color = "black",
+        face = "bold",
+        size = 14,
+        hjust = 0.5,
+        vjust = 1
+      ),
+      axis.title.x = element_blank(),
+      axis.title.y = element_blank(),
+      # axis.text.x = element_blank(),
+      # axis.text.y = element_blank(),
+      # axis.ticks.x = element_blank(),
+      # axis.ticks.y = element_blank(),
+      # panel.grid.major = element_blank(),
+      # panel.grid.minor = element_blank(),
+      legend.text.position = "top",
+      legend.title = element_blank(),
+      legend.text = element_text(angle = 45, hjust = 1)
+    )
+}
+
+
 ## Function: plot.points
 # - Args:
 #   * locations: matrix or data.frame with 2 columns (x, y) for point coordinates
@@ -135,6 +168,160 @@ plot.points <- function(locations, boundary = NULL, group = NULL,
   if (!LEGEND) {
     plot <- plot + guides(color = "none")
   }
+  
+  return(plot)
+}
+
+# --- Helper: coerce to matrix form ---
+as_curve_matrix <- function(locations, obj, prefix = "curve") {
+  if (is.null(obj)) return(NULL)
+  
+  if (is.list(obj)) {
+    cols <- lapply(obj, function(z) {
+      z <- as.numeric(z)
+      if (length(z) != length(locations))
+        stop("All list elements must have length equal to length(locations).")
+      z
+    })
+    M <- do.call(cbind, cols)
+    cn <- names(obj)
+    if (is.null(cn)) cn <- paste0(prefix, seq_len(ncol(M)))
+    colnames(M) <- cn
+    return(M)
+  }
+  
+  if (is.vector(obj) && !is.list(obj)) {
+    if (length(obj) != length(locations))
+      stop("'f' (vector) must have length equal to length(locations).")
+    M <- matrix(as.numeric(obj), ncol = 1)
+    colnames(M) <- prefix
+    return(M)
+  }
+  
+  if (is.matrix(obj)) {
+    if (nrow(obj) != length(locations))
+      stop("'f' (matrix) must have nrow equal to length(locations).")
+    M <- obj
+    if (is.null(colnames(M)))
+      colnames(M) <- paste0(prefix, seq_len(ncol(M)))
+    return(M)
+  }
+  
+  stop("Unsupported type for curves. Use vector, matrix, or list of vectors.")
+}
+
+# --- Helper: long data frame for ggplot ---
+to_long <- function(x, M) {
+  k <- ncol(M)
+  data.frame(
+    x = rep(x, times = k),
+    y = as.numeric(M),
+    curve = rep(colnames(M), each = length(x)),
+    stringsAsFactors = FALSE
+  )
+}
+
+plot.curve <- function(locations, f, true = NULL, limits = NULL, LEGEND = FALSE, colors = "black") {
+  
+  ## Handle null input
+  if (is.null(f)) {
+    return(ggplot() + theme_void())
+  }
+  
+  # --- Main plot ---
+  M <- as_curve_matrix(locations, f, prefix = "curve")
+  data_long <- to_long(locations, M)
+  
+  plot <- ggplot(data_long, aes(x = x, y = y, group = curve)) +
+    geom_line(color = colors)
+  
+  # --- True curves (green + thicker + dotted) ---
+  if (!is.null(true)) {
+    Tm <- as_curve_matrix(locations, true, prefix = "true")
+    data_true <- to_long(locations, Tm)
+    
+    if (ncol(M) > 1) {
+      # multiple curves → make true curve stand out
+      plot <- plot + geom_line(
+        data = data_true,
+        aes(x = x, y = y),
+        linetype = "dashed",
+        color = "green",
+        linewidth = 0.8
+      )
+    } else {
+      # single curve → normal black dotted
+      plot <- plot + geom_line(
+        data = data_true,
+        aes(x = x, y = y),
+        linetype = "dotted",
+        color = "darkgreen",
+        linewidth = 0.8
+      )
+    }
+  }
+  
+  # --- Y limits ---
+  if (!is.null(limits)) {
+    plot <- plot + ylim(limits[1], limits[2])
+  }
+  
+  # --- Legend control ---
+  if (!LEGEND) {
+    plot <- plot + theme(legend.position = "none")
+  }
+  
+  return(plot)
+}
+
+plot.curve_points <- function(locations, f, true = NULL, size = 1, limits = NULL) {
+  
+  ## Handle null input
+  if (is.null(f)) {
+    return(ggplot() + theme_void())
+  }
+  
+  # --- main curves ---
+  M <- as_curve_matrix(locations, f, prefix = "curve")
+  data_long <- to_long(locations, M)
+  
+  plot <- ggplot(data_long, aes(x = x, y = y, group = curve)) +
+    geom_point(size = size, color = "black") +
+    geom_line(color = "black", linewidth = 0.5)  # connect dots with segments
+  
+  # --- true curve ---
+  if (!is.null(true)) {
+    Tm <- as_curve_matrix(locations, true, prefix = "true")
+    data_true <- to_long(locations, Tm)
+    
+    if (ncol(M) > 1) {
+      # multiple curves → green dashed
+      plot <- plot + geom_line(
+        data = data_true,
+        aes(x = x, y = y),
+        color = "green",
+        linetype = "dashed",
+        linewidth = 1
+      )
+    } else {
+      # single curve → black dotted
+      plot <- plot + geom_line(
+        data = data_true,
+        aes(x = x, y = y),
+        color = "black",
+        linetype = "dotted",
+        linewidth = 0.8
+      )
+    }
+  }
+  
+  # --- y limits ---
+  if (!is.null(limits)) {
+    plot <- plot + ylim(limits[1], limits[2])
+  }
+  
+  # --- remove legend ---
+  plot <- plot + theme(legend.position = "none")
   
   return(plot)
 }
@@ -799,31 +986,31 @@ plot.aggregated_data <- function(loaded_results, data_plot_orig, title_prefix, v
     ncols <- if (length(labels_cols) == 0) 1 else length(labels_cols)
     
     if (isTRUE(plots_catalog$boxplots)) {
-      boxplot <- arrangeGrob(grobs = boxplot_list, ncol = ncols)
+      boxplot <- arrangeGrob(grobs = boxplot_list, ncol = ncols, as.table = FALSE)
       boxplot <- labled_plots_grid(boxplot, title, labels_cols, labels_rows, 9, 7)
       grid.arrange(boxplot)
     }
     
     if (isTRUE(plots_catalog$lines)) {
-      plot <- arrangeGrob(grobs = plot_list, ncol = ncols)
+      plot <- arrangeGrob(grobs = plot_list, ncol = ncols, as.table = FALSE)
       plot <- labled_plots_grid(plot, title, labels_cols, labels_rows, 9, 7)
       grid.arrange(plot)
     }
     
     if (isTRUE(plots_catalog$logx)) {
-      plot_logx <- arrangeGrob(grobs = plot_logx_list, ncol = ncols)
+      plot_logx <- arrangeGrob(grobs = plot_logx_list, ncol = ncols, as.table = FALSE)
       plot_logx <- labled_plots_grid(plot_logx, title, labels_cols, labels_rows, 9, 7)
       grid.arrange(plot_logx)
     }
     
     if (isTRUE(plots_catalog$loglog)) {
-      plot_loglog <- arrangeGrob(grobs = plot_loglog_list, ncol = ncols)
+      plot_loglog <- arrangeGrob(grobs = plot_loglog_list, ncol = ncols, as.table = FALSE)
       plot_loglog <- labled_plots_grid(plot_loglog, title, labels_cols, labels_rows, 9, 7)
       grid.arrange(plot_loglog)
     }
     
     if (isTRUE(plots_catalog$normalized)) {
-      plot_loglog_normalized <- arrangeGrob(grobs = plot_loglog_normalized_list, ncol = ncols)
+      plot_loglog_normalized <- arrangeGrob(grobs = plot_loglog_normalized_list, ncol = ncols, as.table = FALSE)
       plot_loglog_normalized <- labled_plots_grid(plot_loglog_normalized, title, labels_cols, labels_rows, 9, 7)
       grid.arrange(plot_loglog_normalized)
     }

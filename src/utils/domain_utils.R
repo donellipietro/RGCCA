@@ -26,6 +26,7 @@ generate_domain <- function(name_mesh = "unit_square", n_nodes = 1600) {
            knots <- unit_interval(n_nodes)
            
            return(list(
+             d = 1,
              boundary = boundary,
              knots = knots
            ))
@@ -43,6 +44,7 @@ generate_domain <- function(name_mesh = "unit_square", n_nodes = 1600) {
            fdapde_mesh <- fdaPDE::create.mesh.2D(femr_mesh$nodes())
            
            return(list(
+             d = 2,
              femr_mesh = femr_mesh,
              boundary = boundary,
              fdapde_mesh = fdapde_mesh
@@ -65,14 +67,22 @@ generate_domain <- function(name_mesh = "unit_square", n_nodes = 1600) {
 #   Generates measurement locations. If 'locs_eq_nodes' is TRUE, returns the
 #   mesh nodes from the provided domain. Otherwise, samples 'n_locs'
 #   points (stratified) inside the domain boundary and returns their coordinates.
-generate_locations <- function(domain, locs_eq_nodes, n_locs) {
+generate_locations <- function(domain, locs_eq_nodes, n_locs, type = "stratified") {
   if (locs_eq_nodes) {
-    locations <- domain$fdapde_mesh$nodes
+    if(domain$d == 2) {
+      locations <- domain$fdapde_mesh$nodes
+    } else if(domain$d == 1) {
+      locations <- domain$knots
+    }
     cat("\nLocations set to be equal to the nodes of the mesh!\n")
   } else {
     set.seed(-1)
-    points <- spsample(domain$boundary, n_locs, type = "stratified")
-    locations <- points@coords
+    points <- spsample(domain$boundary, n_locs, type = type)
+    if(domain$d == 2) {
+      locations <- points@coords
+    } else if(domain$d == 1) {
+      locations <- points@coords[, 1]
+    }
     cat("\nCustom locations initialized!\n")
   }
   return(locations)
