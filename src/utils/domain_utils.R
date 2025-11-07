@@ -74,7 +74,7 @@ generate_locations <- function(domain, locs_eq_nodes, n_locs, type = "stratified
     } else if(domain$d == 1) {
       locations <- domain$knots
     }
-    cat("\nLocations set to be equal to the nodes of the mesh!\n")
+    # cat("\nLocations set to be equal to the nodes of the mesh!\n")
   } else {
     set.seed(-1)
     points <- spsample(domain$boundary, n_locs, type = type)
@@ -83,7 +83,7 @@ generate_locations <- function(domain, locs_eq_nodes, n_locs, type = "stratified
     } else if(domain$d == 1) {
       locations <- points@coords[, 1]
     }
-    cat("\nCustom locations initialized!\n")
+    # cat("\nCustom locations initialized!\n")
   }
   return(locations)
 }
