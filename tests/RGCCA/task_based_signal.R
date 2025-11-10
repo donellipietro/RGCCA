@@ -459,7 +459,8 @@ summ <- on_off_summary(R, U)
 
 ## --- 1) Latent BOLD at dt, scaled to percent signal change ---
 # Use peak-normalized HRF, then scale to ~3% task peaks (tweak as you like)
-B_latent <- apply_hrf(R, dt, duration = 32, normalize = "area")
+hrf_len_sec <- 32
+B_latent <- apply_hrf(R, dt, duration = hrf_len_sec, normalize = "area")
 B_latent <- B_latent / max(abs(B_latent)) * 0.03  # 3% signal change peak
 
 ## Plots

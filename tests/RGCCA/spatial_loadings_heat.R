@@ -140,7 +140,7 @@ for (region in c(1, 2, 3, 4)) {
     
     plot_list <- c(
       plot_list, 
-      plot.field_tile(locs, u_locs, boundary, ISOLINES = TRUE, limits = limits) + 
+      plot.field_tile(locs, u_locs, boundary,  limits = limits) + # ISOLINES = TRUE,
         std_plot_settings_fields() + 
         ggtitle(paste("id", id)))
   }

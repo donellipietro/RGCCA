@@ -29,9 +29,14 @@ if (length(poly_groups) > 1) {
 ## Build one mesh per island, refining by target area
 mesh_list <- meshes_from_poly_groups(poly_groups, maximum_area = 0.25) # minimum_angle = 30
 
+mesh <- mesh_list[[4]]$mesh
+femr_mesh <- Mesh(fdapde2femR_mesh(mesh))
+plot(femr_mesh) %>% layout(
+  scene = list(
+    aspectratio = list(x = 1, y = 1)
+  )
+)
 
-
-plot_multi_mesh(mesh_list)
 
 
 plot_list <- list()
