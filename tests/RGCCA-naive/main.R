@@ -169,6 +169,8 @@ if (RUN$tests) {
     ## File names where the results should be found
     file_model_vect <- paste0(path_list$batch, "batch_", batch_idx, "_fitted_model_", test_options$model_names, ".RData")
     
+    test_options$batch_index <- batch_idx
+    
     ## Generate data only if necessary (no fit found of fit is forced)
     if (any(!file.exists(file_model_vect)) || FORCE_FIT || FORCE_EVALUATE) {
       data <- generate_data(

@@ -14,7 +14,7 @@
 #   a line boundary and 1D knots. For "unit_square", returns a femR mesh, a
 #   polygon boundary, and an fdaPDE mesh. The returned list fields depend on
 #   the selected domain.
-generate_domain <- function(name_mesh = "unit_square", n_nodes = 1600) {
+generate_domain <- function(name_mesh = "unit_square", n_nodes = 1600, T_sec = NULL) {
   switch(name_mesh,
          unit_interval = {
            
@@ -24,6 +24,23 @@ generate_domain <- function(name_mesh = "unit_square", n_nodes = 1600) {
            
            ## Knots
            knots <- unit_interval(n_nodes)
+           
+           return(list(
+             d = 1,
+             boundary = boundary,
+             knots = knots
+           ))
+         },
+         interval = {
+           
+           if(is.null(T_sec)) T_sec = 1
+           
+           ## Boundary
+           boundary <- extent(0, T_sec, 0, 0)
+           boundary <- as(boundary, "SpatialLines")
+           
+           ## Knots
+           knots <- unit_interval(n_nodes) * T_sec
            
            return(list(
              d = 1,

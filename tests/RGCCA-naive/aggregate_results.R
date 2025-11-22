@@ -118,8 +118,6 @@ dev.off()
 
 ### RMSE ----
 
-## Open a pdf where to save the plots
-pdf(paste0(path_list$images, "rmse.pdf"), width = 15, height = 15)
 
 # #### RMSE[X] at locations ----
 # 
@@ -138,8 +136,25 @@ data_plot <- loaded_results$rmse$X
 ## Set plots parameters
 n_groups <- 4
 
-#### RMSE[E] at locations ----
+
 for(g in 1:n_groups) {
+  
+  ## Open a pdf where to save the plots
+  pdf(paste0(path_list$images, "rmse_g", g, ".pdf"), width = 15, height = 15)
+  
+  #### RMSE[A] at locations ----
+  data_plot <- loaded_results$rmse[[paste0("A", g, "_locs")]]
+  title_prefix <- paste0("RMSE[A", g,"] at locations w.r.t the")
+  values_name <- "RMSE"
+  limits <- c(0, max(data_plot[loaded_results$model_names[1:2]]))
+  
+  ## Plot aggregated results
+  plot.aggregated_data(
+    loaded_results, data_plot, title_prefix, values_names,
+    order = order, limits = limits
+  )
+  
+  #### RMSE[E] at locations ----
   data_plot <- loaded_results$rmse[[paste0("E", g, "_locs")]]
   title_prefix <- paste0("RMSE[E", g,"] at locations w.r.t the")
   values_name <- "RMSE"
@@ -150,23 +165,9 @@ for(g in 1:n_groups) {
     loaded_results, data_plot, title_prefix, values_names,
     order = order, limits = limits
   )
+  
+  dev.off()
 }
-
-# #### RMSE[A] at locations ----
-# for(g in 1:n_groups) {
-#   data_plot <- loaded_results$rmse[[paste0("A", g, "_locs")]]
-#   title_prefix <- paste0("RMSE[A", g,"] at locations w.r.t the")
-#   values_name <- "RMSE"
-#   limits <- c(0, max(data_plot[loaded_results$model_names[1:2]]))
-#   
-#   ## Plot aggregated results
-#   plot.aggregated_data(
-#     loaded_results, data_plot, title_prefix, values_names,
-#     order = order, limits = limits
-#   )
-# }
-
-dev.off()
 
 # #### RMSE[gcv_scores] at locations ----
 # 

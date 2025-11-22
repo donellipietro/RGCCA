@@ -26,12 +26,12 @@ load_qualitative_results <- function(test_options, data, path_list) {
   
   ## Load batches
   n_reps <- test_options$test_options$n_reps
-  for (batch_index in seq_len(n_reps)) {
+  for (batch_index in seq_len(n_reps)) { # batch_index <- 1
     tryCatch(
       {
         path_batch <- paste0(path_list$results, "/", "batch_", batch_index, "/")
         
-        for (name_model in test_options$model_names) {
+        for (name_model in test_options$model_names) { # name_model <- test_options$model_names[5]
           ## Load model file
           model_file <- paste0(
             path_batch,
@@ -46,10 +46,10 @@ load_qualitative_results <- function(test_options, data, path_list) {
           for(g in 1:n_groups) {
             A_locs[[paste0(g)]][[name_model]][[batch_index]] <- model$results$A_hat_locs[[g]]
             E_locs[[paste0(g)]][[name_model]][[batch_index]] <- model$results$E_hat_locs[[g]]
-            if ("A_grid" %in% names(model$results)) {
+            if ("A_hat_grid" %in% names(model$results)) {
               A_grid[[paste0(g)]][[name_model]][[batch_index]] <- model$results$A_hat_grid[[g]]
             }
-            if ("E_grid" %in% names(model$results)) {
+            if ("E_hat_grid" %in% names(model$results)) {
               E_grid[[paste0(g)]][[name_model]][[batch_index]] <- model$results$E_hat_grid[[g]]
             }
           }

@@ -8,7 +8,7 @@ TEST_SUITE <- "RGCCA - Naive"
 test_suite <- "RGCCA-naive"
 
 ## Force fit/evaluation even if a fit is already available
-FORCE_FIT <- TRUE
+FORCE_FIT <- FALSE
 FORCE_EVALUATE <- FALSE
 
 ## Execution flow modifiers
@@ -16,7 +16,7 @@ RUN <- list()
 RUN$tests <- TRUE
 
 ## C++ output
-IGNORE_CPP_OUTPUT = FALSE
+IGNORE_CPP_OUTPUT = TRUE
 
 ## Defaults
 name_main_test_default <- "test1"
