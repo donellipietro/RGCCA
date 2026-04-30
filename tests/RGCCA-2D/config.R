@@ -4,8 +4,8 @@
 ## Test suite full name and acronym
 # - TEST_SUITE is for printing only
 # - test_suite will be used to create directories (no spaces, please)
-TEST_SUITE <- "RGCCA - 1D"
-test_suite <- "RGCCA-1D"
+TEST_SUITE <- "RGCCA - 2D"
+test_suite <- "RGCCA-2D"
 
 ## Force fit/evaluation even if a fit is already available
 FORCE_FIT <- FALSE

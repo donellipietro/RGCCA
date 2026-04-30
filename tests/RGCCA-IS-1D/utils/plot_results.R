@@ -27,27 +27,27 @@ plot_quantitative_results <- function(loaded_results) {
   ) + std_plot_settings() + ggtitle("Time")
   print(plot)
   
-  # ## RMSE ----
-  # ## Overall measures
-  # rmses <- loaded_results$rmse
-  # names <- c("reconstruction_locs", "scores_orth")
-  # titles <- c("Reconstruction at locations", "Deviation from scores orthogonality")
-  # 
-  # for (i in seq_along(names)) {
-  #   name <- names[i]
-  #   title <- titles[i]
-  #   indexes <- which(!is.nan(colSums(rmses[[name]][, model_names])))
-  #   plot <- plot.grouped_boxplots(
-  #     rmses[[name]][, c("Group", names(indexes))],
-  #     values_name = "RMSE",
-  #     group_name = "",
-  #     group_labels = "",
-  #     subgroup_name = "Approaches",
-  #     subgroup_labels = model_names[indexes],
-  #     subgroup_colors = model_colors[indexes]
-  #   ) + std_plot_settings() + ggtitle(title)
-  #   print(plot)
-  # }
+  ## RMSE ----
+  ## Overall measures
+  rmses <- loaded_results$rmse
+  names <- c("H1", "H2", "H2", "H4", "A1_locs", "A2_locs", "A3_locs", "A4_locs")
+  titles <- c("H1", "H2", "H2", "H4", "A1_locs", "A2_locs", "A3_locs", "A4_locs")
+
+  for (i in seq_along(names)) {
+    name <- names[i]
+    title <- titles[i]
+    indexes <- which(!is.nan(colSums(rmses[[name]][, model_names])))
+    plot <- plot.grouped_boxplots(
+      rmses[[name]][, c("Group", names(indexes))],
+      values_name = "RMSE",
+      group_name = "",
+      group_labels = "",
+      subgroup_name = "Approaches",
+      subgroup_labels = model_names[indexes],
+      subgroup_colors = model_colors[indexes]
+    ) + std_plot_settings() + ggtitle(title)
+    print(plot)
+  }
   
 }
 
@@ -58,19 +58,19 @@ plot_qualitative_results <- function(group, quantitative_results, qualitative_re
   # quantitative_results <- loaded_qnt_results
   # qualitative_results  <- loaded_qlt_results
   
-  n_comp <- as.numeric(max(quantitative_results$rmse$E1_locs$Group))
+  n_comp <- as.numeric(max(quantitative_results$rmse$A1_locs$Group))
   
   ## Get fitted quantities
   A_locs <- qualitative_results$A_locs
   A_grid <- qualitative_results$A_grid
-  E_locs <- qualitative_results$E_locs
-  E_grid <- qualitative_results$E_grid
+  # E_locs <- qualitative_results$E_locs
+  # E_grid <- qualitative_results$E_grid
   
   ## Get true quantities
   A_true_locs <- qualitative_results$A_true_locs
   A_true_grid <- qualitative_results$A_true_grid
-  E_true_locs <- qualitative_results$E_true_locs
-  E_true_grid <- qualitative_results$E_true_grid
+  # E_true_locs <- qualitative_results$E_true_locs
+  # E_true_grid <- qualitative_results$E_true_grid
   
   ## Get infos
   domain_D <- qualitative_results$domain_D
@@ -122,7 +122,7 @@ plot_qualitative_results <- function(group, quantitative_results, qualitative_re
       ## Reconstructed f for quantile-based replicates
       for (j in 1:3) {
         
-        if(is.null(A_grid[[group]][[name_model]][[indexes[[i]][j]]])) {
+        if(length(A_grid)==0 || is.null(A_grid[[group]][[name_model]][[indexes[[i]][j]]])) {
           plot_list[[4*(i-1) + j + 1]] <- plot.curve_points(
             qualitative_results$locations_D,
             A_locs[[group]][[name_model]][[indexes[[i]][j]]][, i],
@@ -133,8 +133,7 @@ plot_qualitative_results <- function(group, quantitative_results, qualitative_re
           plot_list[[4*(i-1) + j + 1]] <- plot.curve(
             qualitative_results$grid_D,
             A_grid[[group]][[name_model]][[indexes[[i]][j]]][, i],
-            true = A_true_grid[[group]][, i]# ,
-            # limits = limits
+            true = A_true_grid[[group]][, i]
           ) + std_plot_settings_curves()
         }
       }
@@ -149,59 +148,59 @@ plot_qualitative_results <- function(group, quantitative_results, qualitative_re
     grid.arrange(plots_locs)
     # grid.arrange(plots_grid)
     
-    for (i in 1:n_comp) { # i <- 1
-      
-      ## Select representative replicates (min, median, max RMSE)
-      indexes <- tapply(
-        quantitative_results$rmse[[paste0("E", group, "_locs")]][[name_model]],
-        quantitative_results$rmse[[paste0("E", group, "_locs")]]$Group,
-        function(x) {
-          sapply(quantile(x, c(0, 0.5, 1), na.rm = TRUE), function(q) which.min(abs(x - q)))
-        }
-      )
-      
-      ## Compute limits
-      limits_grid <- apply(do.call(rbind, unlist(E_locs[[group]], recursive = FALSE)), 2, range)
-      
-      limits <- range(c(E_true_grid[[group]], limits_grid))
-      breaks <- seq(limits[1], limits[2], length = 10)
-      
-      ## True f
-      # plot_list[[4*(i-1) + 1]] <- plot.curve_points(
-      #  qualitative_results$locations_T, E_true_locs[[group]][, i], size = 1
-      # ) + std_plot_settings_curves()
-      
-      plot_list[[4*(i-1) + 1]] <- plot.curve(
-       qualitative_results$grid_D, E_true_grid[[group]][, i]
-      ) + std_plot_settings_curves()
-      
-      ## Reconstructed f for quantile-based replicates
-      for (j in 1:3) {
-        
-        if(length(E_grid) == 0 || is.null(E_grid[[group]][[name_model]][[indexes[[i]][j]]])) {
-          plot_list[[4*(i-1) + j + 1]] <- plot.curve_points(
-            qualitative_results$locations_T,
-            E_locs[[group]][[name_model]][[indexes[[i]][j]]][, i],
-            true = E_true_locs[[group]][, i],
-            size = 1
-          ) + std_plot_settings_curves()
-        } else{
-          plot_list[[4*(i-1) + j + 1]] <- plot.curve(
-            qualitative_results$grid_T,
-            E_grid[[group]][[name_model]][[indexes[[i]][j]]][, i],
-            true = E_true_grid[[group]][, i]# ,
-            # limits = limits
-          ) + std_plot_settings_curves()
-        }
-      }
-      
-    }
-    
-    ## Arrange labeled grids for each display mode
-    plots <- labled_plots_grid(arrangeGrob(grobs = plot_list, ncol = 4), paste("E at location - model:", label_model), labels_cols, labels_rows)
-    
-    ## Display plots sequentially
-    grid.arrange(plots)
+    # for (i in 1:n_comp) { # i <- 1
+    #   
+    #   ## Select representative replicates (min, median, max RMSE)
+    #   indexes <- tapply(
+    #     quantitative_results$rmse[[paste0("E", group, "_locs")]][[name_model]],
+    #     quantitative_results$rmse[[paste0("E", group, "_locs")]]$Group,
+    #     function(x) {
+    #       sapply(quantile(x, c(0, 0.5, 1), na.rm = TRUE), function(q) which.min(abs(x - q)))
+    #     }
+    #   )
+    #   
+    #   ## Compute limits
+    #   limits_grid <- apply(do.call(rbind, unlist(E_locs[[group]], recursive = FALSE)), 2, range)
+    #   
+    #   limits <- range(c(E_true_grid[[group]], limits_grid))
+    #   breaks <- seq(limits[1], limits[2], length = 10)
+    #   
+    #   ## True f
+    #   # plot_list[[4*(i-1) + 1]] <- plot.curve_points(
+    #   #   qualitative_results$locations_T, E_true_locs[[group]][, i], size = 1
+    #   # ) + std_plot_settings_curves()
+    #   
+    #   plot_list[[4*(i-1) + 1]] <- plot.curve(
+    #     qualitative_results$grid_D, E_true_grid[[group]][, i]
+    #   ) + std_plot_settings_curves()
+    #   
+    #   ## Reconstructed f for quantile-based replicates
+    #   for (j in 1:3) {
+    #     
+    #     if(is.null(E_grid[[group]][[name_model]][[indexes[[i]][j]]])) {
+    #       plot_list[[4*(i-1) + j + 1]] <- plot.curve_points(
+    #         qualitative_results$locations_T,
+    #         E_locs[[group]][[name_model]][[indexes[[i]][j]]][, i],
+    #         true = E_true_locs[[group]][, i],
+    #         size = 1
+    #       ) + std_plot_settings_curves()
+    #     } else{
+    #       plot_list[[4*(i-1) + j + 1]] <- plot.curve(
+    #         qualitative_results$grid_T,
+    #         E_grid[[group]][[name_model]][[indexes[[i]][j]]][, i],
+    #         true = E_true_grid[[group]][, i],
+    #         limits = limits
+    #       ) + std_plot_settings_curves()
+    #     }
+    #   }
+    #   
+    # }
+    # 
+    # ## Arrange labeled grids for each display mode
+    # plots <- labled_plots_grid(arrangeGrob(grobs = plot_list, ncol = 4), paste("E at location - model:", label_model), labels_cols, labels_rows)
+    # 
+    # ## Display plots sequentially
+    # grid.arrange(plots)
     
   }
 }

@@ -383,6 +383,30 @@ hole_point_inside <- function(ring) {
   as.numeric(sf::st_coordinates(pt))
 }
 
+remove_duplicate_nodes <- function(nodes, segments, tol = 1e-10) {
+  ## nodes: N×2
+  ## segments: S×2 (indices)
+  ## Returns: list(nodes = new_nodes, segments = new_segments)
+  
+  # Step 1: identify unique rows within tolerance
+  # Round is extremely safe and stable for geometry
+  key <- paste0(round(nodes[,1] / tol), "_", round(nodes[,2] / tol))
+  uniq <- !duplicated(key)
+  
+  # Map old → new indices
+  new_index <- cumsum(uniq)
+  segments_new <- matrix(new_index[segments], ncol = 2)
+  
+  # Step 2: Remove degenerate segments (i → i)
+  deg <- segments_new[,1] == segments_new[,2]
+  if (any(deg)) segments_new <- segments_new[!deg, , drop = FALSE]
+  
+  list(
+    nodes = nodes[uniq, , drop = FALSE],
+    segments = segments_new
+  )
+}
+
 ## Assemble fdaPDE boundary inputs for ONE polygon (outer + holes)
 assemble_boundary_for_fdaPDE <- function(poly_group) {
   ## poly_group$outer : CLOSED ring (n+1×2, last row equals first)
@@ -406,10 +430,22 @@ assemble_boundary_for_fdaPDE <- function(poly_group) {
     colnames(holes_pts) <- c("x","y")
   }
   
-  storage.mode(nodes) <- "double"     ## fdaPDE expects numeric nodes
-  storage.mode(segments) <- "integer" ## and integer segments
+  storage.mode(nodes) <- "double"
+  storage.mode(segments) <- "integer"
   
-  list(nodes = nodes, segments = segments, holes_pts = holes_pts)
+  ## ---------------------------------------------------------
+  ## SURGICAL FIX: remove duplicate boundary nodes
+  ## ---------------------------------------------------------
+  dedup <- remove_duplicate_nodes(nodes, segments, tol = 1e-10)
+  nodes    <- dedup$nodes
+  segments <- dedup$segments
+  ## ---------------------------------------------------------
+  
+  list(
+    nodes = nodes,
+    segments = segments,
+    holes_pts = holes_pts
+  )
 }
 
 ## Create and (optionally) refine ONE mesh from ONE polygon group

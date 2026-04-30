@@ -84,7 +84,7 @@ plot_qualitative_results <- function(group, quantitative_results, qualitative_re
   labels_rows <- paste("comp.", 1:n_comp)
   
   ## Generate figures for each model
-  for (m in seq_along(model_names)) { # m <- 4
+  for (m in seq_along(model_names)) { # m <- 1
     
     ## Room for plots
     plot_list <- list()
@@ -115,27 +115,27 @@ plot_qualitative_results <- function(group, quantitative_results, qualitative_re
       #   qualitative_results$locations_D, A_true_locs[[group]][, i], size = 1
       # ) + std_plot_settings_curves()
       
-      plot_list[[4*(i-1) + 1]] <- plot.curve(
-        qualitative_results$grid_D, A_true_grid[[group]][, i]# , LEGEND = FALSE
-      ) + std_plot_settings_curves()
+      plot_list[[4*(i-1) + 1]] <- plot.field_tile(
+        qualitative_results$grid_D[[group]], A_true_grid[[group]][, i],
+        boundary = domain_D[[group]]$boundary
+      ) + std_plot_settings_fields()
       
       ## Reconstructed f for quantile-based replicates
       for (j in 1:3) {
         
-        if(is.null(A_grid[[group]][[name_model]][[indexes[[i]][j]]])) {
-          plot_list[[4*(i-1) + j + 1]] <- plot.curve_points(
-            qualitative_results$locations_D,
+        if(length(A_grid) == 0 || is.null(A_grid[[group]][[name_model]][[indexes[[i]][j]]])) {
+          plot_list[[4*(i-1) + j + 1]] <- plot.field_tile(
+            qualitative_results$locations_D[[group]],
             A_locs[[group]][[name_model]][[indexes[[i]][j]]][, i],
-            true = A_true_locs[[group]][, i],
-            size = 1
-          ) + std_plot_settings_curves()
+            boundary = domain_D[[group]]$boundary
+            # size = 3
+          ) + std_plot_settings_fields()
         } else {
-          plot_list[[4*(i-1) + j + 1]] <- plot.curve(
-            qualitative_results$grid_D,
+          plot_list[[4*(i-1) + j + 1]] <- plot.field_tile(
+            qualitative_results$grid_D[[group]],
             A_grid[[group]][[name_model]][[indexes[[i]][j]]][, i],
-            true = A_true_grid[[group]][, i]# ,
-            # limits = limits
-          ) + std_plot_settings_curves()
+            boundary = domain_D[[group]]$boundary
+          ) + std_plot_settings_fields()
         }
       }
       
@@ -172,7 +172,7 @@ plot_qualitative_results <- function(group, quantitative_results, qualitative_re
       # ) + std_plot_settings_curves()
       
       plot_list[[4*(i-1) + 1]] <- plot.curve(
-       qualitative_results$grid_D, E_true_grid[[group]][, i]
+       qualitative_results$grid_T, E_true_grid[[group]][, i]
       ) + std_plot_settings_curves()
       
       ## Reconstructed f for quantile-based replicates

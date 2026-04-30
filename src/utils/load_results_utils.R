@@ -211,7 +211,7 @@ resolve_option_value <- function(opt_name, test_options) {
   if (grepl("\\.", opt_name)) {
     parts <- strsplit(opt_name, "\\.")[[1]]
     v <- test_options
-    for (p in parts) {
+    for (p in parts) { # p <- parts[1]
       if (!is.list(v) || is.null(v[[p]])) return(NA)
       v <- v[[p]]
     }
@@ -223,6 +223,9 @@ resolve_option_value <- function(opt_name, test_options) {
   }
   if (!is.null(test_options$noise) && !is.null(test_options$noise[[opt_name]])) {
     return(test_options$noise[[opt_name]])
+  }
+  if (!is.null(test_options$data) && !is.null(test_options$data[[opt_name]])) {
+    return(test_options$data[[opt_name]])
   }
   return(NA)
 }

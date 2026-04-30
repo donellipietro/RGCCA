@@ -11,7 +11,6 @@ rm(list = ls())
 graphics.off()
 options(warn = -1)
 
-
 # README ----
 
 ## Welcome!
@@ -34,7 +33,7 @@ invisible(suppressMessages(sapply(c(
   "RGCCA", "FGCCA",
   # discretization
   "fdaPDE", "femR",
-  #
+  # components alignement
   "clue",
   # algebraic utils
   "pracma",
@@ -126,7 +125,7 @@ if (length(args) == 0) {
 ## Select the test option
 if (is.null(file_options)) {
   file_options_list
-  file_options <- file_options_list[4] ## <====== INPUT HERE
+  file_options <- file_options_list[1] ## <====== INPUT HERE
 }
 
 ## Load selected options
@@ -163,7 +162,11 @@ if (RUN$tests) {
     
     ## Create batch directory
     path_list$batch <- paste0(path_list$results, "batch_", batch_idx, "/")
+    # path_list$tmp_data <- paste0(path_list$tmp_data, "batch_", batch_idx, "/")
+    # path_list$tmp_results <- paste0(path_list$tmp_results, "batch_", batch_idx, "/")
     mkdir(path_list$batch)
+    # mkdir(path_list$tmp_data)
+    # mkdir(path_list$tmp_results)
     
     ### Generate data ----
     cat("- Generate data\n")

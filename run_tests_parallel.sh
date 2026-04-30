@@ -7,7 +7,7 @@
 start=$(date +%s.%N)
 
 # Define the number of high-performance cores
-NUM_CORES=12
+NUM_CORES=8
 
 # Define the total number of CPU cores
 TOTAL_CORES=$(sysctl -n hw.physicalcpu)

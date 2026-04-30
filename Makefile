@@ -34,8 +34,9 @@ install:  install_femR
 	@echo "\nInstallation completed."
 
 
-# Build target ----
-build: install compile_all
+# Build target ----  
+# compile_all
+build: install
 	@echo "Creating necessary directories..."
 	@mkdir -p results
 	@mkdir -p images

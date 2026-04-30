@@ -25,17 +25,18 @@ auto fit_model(Triangulation<1,1> I_D,
                int n_obs,
                int n_comp,
                double sd_noise,
+               double tau,
                const matrix_t& grid_D,
                // const std::vector<double>& lambda_grid,
                const std::string& path_data,
                const std::string& path_results) {
   
-  std::cout << "Fit: fRGCCA" << std::endl;
-  std::cout << "- n_obs: " << n_obs << std::endl;
-  std::cout << "- n_comp: " << n_comp << std::endl;
-  std::cout << "- sd_noise: " << sd_noise << std::endl;
+  // std::cout << "Fit: fRGCCA" << std::endl;
+  // std::cout << "- n_obs: " << n_obs << std::endl;
+  // std::cout << "- n_comp: " << n_comp << std::endl;
+  // std::cout << "- sd_noise: " << sd_noise << std::endl;
   // std::cout << "- Lambda grid has " << lambda_grid.size() << " values.\n";
-  std::cout << std::endl;
+  // std::cout << std::endl;
   
   // Physics (isotropic Laplacian)
   FeSpace Vh(I_D, P1<1>);
@@ -49,14 +50,23 @@ auto fit_model(Triangulation<1,1> I_D,
   // Chose options
   RGCCA<IndependentSampling>::Options options;
   options.scheme = Scheme::Factorial();
-  // options.flip_and_scale = false;
-  // options.bias = false;
+  
+  options.flip_and_scale = false;
+  options.bias = true;
+  
+  if(tau < 0) options.tau_selection = TauSelection::Automatic;
+  else options.tau_selection = TauSelection::Manual;
   
   // Model initialization
   RGCCA<IndependentSampling> rgcca(n_obs, options, n_comp);
   
   // Set empirical noise variance
-  rgcca.set_noise_variance(sd_noise*sd_noise);
+  // if(sd_noise > 0){
+  //   rgcca.set_noise_variance(sd_noise*sd_noise);
+  //   options.allow_blocks_deactivation = true; // default
+  // } else {
+    options.allow_blocks_deactivation = false;
+  // }
   
   // Add blocks
   for (int i = 1; i <= 4; ++i) {
@@ -64,13 +74,15 @@ auto fit_model(Triangulation<1,1> I_D,
     Eigen::Matrix<double, Dynamic, Dynamic> X = read_csv<double>(path_data + "X" + std::to_string(i) + ".csv").as_matrix();
     auto& level = gf.insert_scalar_layer<POINT>("data", path_data + "locs_D" + ".csv");
     level.load_blk("X" + std::to_string(i), X.transpose());
-    rgcca.add_functional_block("X" + std::to_string(i), gf, fe_ls_elliptic(a_D, F_D));
+    rgcca.add_functional_block("X" + std::to_string(i), gf, fe_ls_elliptic(a_D, F_D), tau);
   }
   
   // Add connections
   rgcca.connect(0,1);
   rgcca.connect(0,2);
+  rgcca.connect(0,3);
   rgcca.connect(1,3);
+  rgcca.connect(2,3);
   
   // Fit
   const auto results = rgcca.fit();
@@ -84,6 +96,10 @@ auto fit_model(Triangulation<1,1> I_D,
     write_csv(path_results + "E"+ std::to_string(id) + "_hat_locs.csv", block -> components_m());
     write_csv(path_results + "A"+ std::to_string(id) + "_hat_grid.csv", Psi_grid * block -> loadings());
     id ++;
+  }
+  
+  for(int h = 0; h < n_comp; h++) {
+    write_csv(path_results + "objective"+ std::to_string(h+1) +".csv", results[h].obj_history);
   }
   
   return 1;
@@ -101,7 +117,7 @@ int main(int argc, char* argv[]) {
   }
   
   std::string params_path = argv[1];
-  std::cout << "Reading parameters from: " << params_path << std::endl;
+  // std::cout << "Reading parameters from: " << params_path << std::endl;
   
   // Load JSON
   std::ifstream input(params_path);
@@ -119,12 +135,12 @@ int main(int argc, char* argv[]) {
   std::string path_data = "../../" + jroot["path_list"].value("data", "./data/");
   std::string path_results = "../../" + jroot["path_list"].value("results", "./results/");
   
-  std::cout << std::endl;
-  std::cout << "Paths:" << std::endl;
-  std::cout << "- Mesh: " << path_mesh << std::endl;
-  std::cout << "- Data: " << path_data << std::endl;
-  std::cout << "- Results: " << path_results << std::endl;
-  std::cout << std::endl;
+  // std::cout << std::endl;
+  // std::cout << "Paths:" << std::endl;
+  // std::cout << "- Mesh: " << path_mesh << std::endl;
+  // std::cout << "- Data: " << path_data << std::endl;
+  // std::cout << "- Results: " << path_results << std::endl;
+  // std::cout << std::endl;
   
   // Extract options
   // std::string calibration = jroot["options"].value("calibration", "none");
@@ -138,12 +154,12 @@ int main(int argc, char* argv[]) {
   int n_obs = jroot["options"].value("n_obs", 101);
   int n_comp = jroot["options"].value("n_comp", 3);
   double sd_noise = jroot["options"].value("sd_noise", 0.);
+  double tau = jroot["options"].value("tau", 0.);
   
-  
-  std::cout << "Options:" << std::endl;
-  std::cout << "- n_obs: " << n_obs << std::endl;
-  std::cout << "- n_comp: " << n_comp << std::endl;
-  std::cout << "- sd_noise: " << sd_noise << std::endl;
+  // std::cout << "Options:" << std::endl;
+  // std::cout << "- n_obs: " << n_obs << std::endl;
+  // std::cout << "- n_comp: " << n_comp << std::endl;
+  // std::cout << "- sd_noise: " << sd_noise << std::endl;
   /*
   if (calibration == "none") {
     std::cout << "- Lambda : " << lambda_grid[0] << std::endl;
@@ -162,15 +178,15 @@ int main(int argc, char* argv[]) {
   
   // std::cout << "Loaded data:" << std::endl;
   // std::cout << "- z(" << z.size() << ")" << std::endl;
-  std::cout << "- grid_D(" << grid_D.rows() << ", " << grid_D.cols() << ")" << std::endl;
-  std::cout << std::endl;
+  // std::cout << "- grid_D(" << grid_D.rows() << ", " << grid_D.cols() << ")" << std::endl;
+  // std::cout << std::endl;
   
   // Fit the model
-  fit_model(I_D, n_obs, n_comp, sd_noise, grid_D, path_data, path_results);
+  fit_model(I_D, n_obs, n_comp, sd_noise, tau, grid_D, path_data, path_results);
   
-  std::cout << "Results:" << std::endl;
-  std::cout << "- Results written to: " << path_results << "output.csv\n";
-  std::cout << std::endl;
+  // std::cout << "Results:" << std::endl;
+  // std::cout << "- Results written to: " << path_results << "output.csv\n";
+  // std::cout << std::endl;
   
   return 0;
 }

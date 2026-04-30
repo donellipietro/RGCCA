@@ -246,7 +246,7 @@ plot.curve <- function(locations, f, true = NULL, limits = NULL, LEGEND = FALSE,
         data = data_true,
         aes(x = x, y = y),
         linetype = "dashed",
-        color = "green",
+        color = "darkgreen",
         linewidth = 0.8
       )
     } else {
@@ -299,7 +299,7 @@ plot.curve_points <- function(locations, f, true = NULL, size = 1, limits = NULL
       plot <- plot + geom_line(
         data = data_true,
         aes(x = x, y = y),
-        color = "green",
+        color = "darkgreen",
         linetype = "dashed",
         linewidth = 1
       )
@@ -308,7 +308,7 @@ plot.curve_points <- function(locations, f, true = NULL, size = 1, limits = NULL
       plot <- plot + geom_line(
         data = data_true,
         aes(x = x, y = y),
-        color = "black",
+        color = "darkgreen",
         linetype = "dotted",
         linewidth = 0.8
       )

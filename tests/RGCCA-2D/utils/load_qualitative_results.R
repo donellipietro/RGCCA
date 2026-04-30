@@ -11,10 +11,8 @@ load_qualitative_results <- function(test_options, data, path_list) {
   cat("\nLoading results for qualitative analysis ...\n")
   
   ## Locations and grid
-  nodes_D <- data$domain_D$knots
   locations_D <- data$locations_D
   grid_D <- data$grid_D
-  nodes_T <- data$domain_T$knots
   locations_T <- data$locations_T
   grid_T <- data$grid_T
   
@@ -84,11 +82,9 @@ load_qualitative_results <- function(test_options, data, path_list) {
     E_locs = E_locs,
     E_grid = E_grid,
     domain_D = data$domain_D,
-    nodes_D = nodes_D,
     locations_D = locations_D,
     grid_D = grid_D,
     domain_T = data$domain_T,
-    nodes_T = nodes_T,
     locations_T = locations_T,
     grid_T = grid_T
   ))

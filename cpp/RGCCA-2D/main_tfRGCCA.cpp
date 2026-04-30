@@ -21,13 +21,14 @@ using vector_t = Eigen::Matrix<double, Eigen::Dynamic, 1>;
 using sparse_matrix_t = Eigen::SparseMatrix<double>;
 
 // Example function
-auto fit_model(Triangulation<1,1> I_D, Triangulation<1,1> I_T,
+auto fit_model(Triangulation<1,1> I_T,
                int n_obs,
                int n_comp,
                double sd_noise,
                double tau,
-               const matrix_t& grid_D, const matrix_t& grid_T,
+               const matrix_t& grid_T,
                // const std::vector<double>& lambda_grid,
+               const std::string& path_mesh,
                const std::string& path_data,
                const std::string& path_results) {
   
@@ -37,14 +38,6 @@ auto fit_model(Triangulation<1,1> I_D, Triangulation<1,1> I_T,
   // std::cout << "- sd_noise: " << sd_noise << std::endl;
   // std::cout << "- Lambda grid has " << lambda_grid.size() << " values.\n";
   // std::cout << std::endl;
-  
-  // Physics space (isotropic Laplacian)
-  BsSpace Bh(I_D, 3);
-  TrialFunction f_D(Bh);
-  TestFunction v_D(Bh);
-  ZeroField<1> u_D;
-  auto a_D = integral(I_D)(dxx(f_D) * dxx(v_D));
-  auto F_D = integral(I_D)(u_D * v_D);
 
   // Chose options
   RGCCA<TimeDependentSampling>::Options options;
@@ -58,23 +51,46 @@ auto fit_model(Triangulation<1,1> I_D, Triangulation<1,1> I_T,
   
   // Model initialization
   RGCCA<TimeDependentSampling> rgcca(n_obs, I_T, options, n_comp);
-  
+
   // Set empirical noise variance
   // if(sd_noise > 0){
   //   rgcca.set_noise_variance(sd_noise*sd_noise);
   //   options.allow_blocks_deactivation = true; // default
   // } else {
-    options.allow_blocks_deactivation = false;
+  options.allow_blocks_deactivation = false;
   // }
   
   // Add blocks
   Eigen::Matrix<double, Dynamic, Dynamic> times = read_csv<double>(path_data + "locs_T" +".csv").as_matrix();
+  std::vector<sparse_matrix_t> Psi_grid_D_vec;
+  Psi_grid_D_vec.reserve(4);
   for (int i = 1; i <= 4; ++i) {
-    GeoFrame gf(I_D);
+    
+    // Load geometry
+    Triangulation<2,2> D(
+        path_mesh + "points_D_" + std::to_string(i) + ".csv",
+        path_mesh + "elements_D_" + std::to_string(i) + ".csv",
+        path_mesh + "boundary_D_" + std::to_string(i) + ".csv",
+        true, true
+    );
+    
+    // Physics space (isotropic Laplacian)
+    FeSpace Vh(D, P1<1>);
+    TrialFunction f_D(Vh);
+    TestFunction v_D(Vh);
+    ZeroField<2> u_D;
+    auto a_D = integral(D)(dot(grad(f_D), grad(v_D)));
+    auto F_D = integral(D)(u_D * v_D);
+    
+    matrix_t grid_D = read_csv<double>(path_data + "grid_D_" + std::to_string(i) + ".csv").as_matrix();
+    Psi_grid_D_vec.push_back(internals::point_basis_eval(Vh, grid_D));
+    
+    GeoFrame gf(D);
     Eigen::Matrix<double, Dynamic, Dynamic> X = read_csv<double>(path_data + "X" + std::to_string(i) + ".csv").as_matrix();
-    auto& level = gf.insert_scalar_layer<POINT>("data", path_data + "locs_D" + ".csv");
+    auto& level = gf.insert_scalar_layer<POINT>("data", path_data + "locs_D_" + std::to_string(i) + ".csv");
     level.load_blk("X" + std::to_string(i), X.transpose());
-    rgcca.add_functional_block("X" + std::to_string(i), times, gf, bs_ls_elliptic(a_D, F_D), tau);
+    rgcca.add_functional_block("X" + std::to_string(i), times, gf, fe_ls_elliptic(a_D, F_D), tau);
+    
   }
   
   // Add connections
@@ -86,18 +102,16 @@ auto fit_model(Triangulation<1,1> I_D, Triangulation<1,1> I_T,
   
   // Fit
   const auto results = rgcca.fit();
-  
   std::cout << results << std::endl;
-  sparse_matrix_t Psi_grid_D = internals::point_basis_eval(Bh, grid_D);
   BsSpace Bh_T(I_T, 3);
   sparse_matrix_t Psi_grid_T = internals::point_basis_eval(Bh_T, grid_T);
-
+  
   // Save results
   int id = 1;
   for (const auto& block : rgcca.blocks()) {
     write_csv(path_results + "A"+ std::to_string(id) + "_hat_locs.csv", block -> loadings_m());
     write_csv(path_results + "E"+ std::to_string(id) + "_hat_locs.csv", block -> components_m());
-    write_csv(path_results + "A"+ std::to_string(id) + "_hat_grid.csv", Psi_grid_D * block -> loadings());
+    write_csv(path_results + "A"+ std::to_string(id) + "_hat_grid.csv", Psi_grid_D_vec[id-1] * block -> loadings());
     write_csv(path_results + "E"+ std::to_string(id) + "_hat_grid.csv", Psi_grid_T * block -> components());
     id ++;
   }
@@ -160,7 +174,6 @@ int main(int argc, char* argv[]) {
   double sd_noise = jroot["options"].value("sd_noise", 0.);
   double tau = jroot["options"].value("tau", 0.);
   
-  
   // std::cout << "Options:" << std::endl;
   // std::cout << "- n_obs: " << n_obs << std::endl;
   // std::cout << "- n_comp: " << n_comp << std::endl;
@@ -176,21 +189,18 @@ int main(int argc, char* argv[]) {
    */
   
   // Load geometry
-  Triangulation<1,1> I_D(path_mesh + "knots_D.csv", true, true);
   Triangulation<1,1> I_T(path_mesh + "knots_T.csv", true, true);
   
   // Load data
-  matrix_t grid_D = read_csv<double>(path_data + "grid_D.csv").as_matrix();
   matrix_t grid_T = read_csv<double>(path_data + "grid_T.csv").as_matrix();
   
   // std::cout << "Loaded data:" << std::endl;
   // std::cout << "- z(" << z.size() << ")" << std::endl;
-  // std::cout << "- grid_D(" << grid_D.rows() << ", " << grid_D.cols() << ")" << std::endl;
   // std::cout << "- grid_T(" << grid_T.rows() << ", " << grid_T.cols() << ")" << std::endl;
   // std::cout << std::endl;
   
   // Fit the model
-  fit_model(I_D, I_T, n_obs, n_comp, sd_noise, tau, grid_D, grid_T, path_data, path_results);
+  fit_model(I_T, n_obs, n_comp, sd_noise, tau, grid_T, path_mesh, path_data, path_results);
   
   // std::cout << "Results:" << std::endl;
   // std::cout << "- Results written to: " << path_results << "output.csv\n";
