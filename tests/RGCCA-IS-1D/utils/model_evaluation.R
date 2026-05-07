@@ -57,6 +57,16 @@ evaluate_results <- function(model, data) {
     }
   }
   
+  ## Loadings star
+  for(g in 1:n_groups) {
+    rmse[[paste0("A_star", g, "_locs")]] <- c()
+    for(h in 1:n_comp) {
+      norm <- RMSE(data$A_locs[[g]][, h])
+      norm <- ifelse(norm == 0, 1, norm)
+      rmse[[paste0("A_star", g, "_locs")]][h] <- RMSE(model$results$A_star_hat_locs[[g]][, h] - data$A_locs[[g]][, h]) / norm
+    }
+  }
+  
   ### RMSE at grid (if possible) ----
   if (model$model_traits$has_interpolator) {
     # norm <- ifelse(RMSE(data$...) == 0, 1, RMSE(data$...))

@@ -19,42 +19,45 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
   # - model_names: used for indexing (no spaces, please)
   # - model_labels: used for plotting
   model_names <- c(
-    "R_GCCA_cor", "R_RGCCA", "R_GCCA_cov",  
+    "R_GCCA_cor", "R_RGCCA", "R_GCCA_cov",
+    
     "CPP_GCCA_cor", "CPP_RGCCA", "CPP_GCCA_cov",
-    "CPP_GCCA_imp_cor", "CPP_RGCCA_imp", "CPP_GCCA_imp_cov",
     "CPP_fGCCA_cor", "CPP_fRGCCA", "CPP_fGCCA_cov",
-    "CPP_tfGCCA_cor", "CPP_tfRGCCA", "CPP_tfGCCA_cov"
+    
+    "CPP_GCCA_NN_cor", "CPP_RGCCA_NN", "CPP_GCCA_NN_cov",
+    "CPP_fGCCA_NN_cor", "CPP_fRGCCA_NN", "CPP_fGCCA_NN_cov"
   )
   model_labels <- c(
     "GCCA - R - cor", "RGCCA - R", "GCCA - R - cov", 
+    
     "GCCA - C++ - cor", "RGCCA - C++", "GCCA - C++ - cov",
-    "GCCA imp. - C++ - cor", "RGCCA imp. - C++", "GCCA imp. - C++ - cov", 
     "fGCCA - cor", "fRGCCA", "fGCCA - cov",
-    "tfGCCA - cor", "tfRGCCA", "tfGCCA - cov"
+    
+    "GCCA - C++ - NN - cor", "RGCCA - C++ - NN", "GCCA - C++ - NN - cov",
+    "fGCCA - NN - cor", "fRGCCA - NN", "fGCCA - NN - cov"
   )
-
+  
   ## Define the color palette
   model_colors <- c(
-    brewer.pal(5, "Reds")[5:3], 
+    brewer.pal(5, "Greys")[5:3], 
+    
+    brewer.pal(5, "Reds")[5:3],
+    brewer.pal(5, "Blues")[5:3],
+    
     brewer.pal(5, "Oranges")[5:3],
-    brewer.pal(5, "Blues")[5:3], 
-    brewer.pal(5, "Purples")[5:3], 
-    brewer.pal(5, "Greens")[5:3])
-
-  ## Options that you want to be common across tests
-  lambda_grid <- 10^seq(-12, 1, by = 1)
+    brewer.pal(5, "Purples")[5:3])
 
   switch(name_main_test,
-    test1 = {
+    testSensitivity = {
       ## Set the desired options
       options <- list(
-        model_names = model_names[c(4,10,13, 5,11,14, 6,12,15)][-c(1,2,3, 4,5,6)],
-        model_labels = model_labels[c(4,10,13, 5,11,14, 6,12,15)][-c(1,2,3, 4,5,6)], #, 8,9
-        model_colors = model_colors[c(4,10,13, 5,11,14, 6,12,15)][-c(1,2,3, 4,5,6)],
+        model_names = model_names[c(3,5)*3], # (1:5)*3
+        model_labels = model_labels[c(3,5)*3],
+        model_colors = model_colors[c(3,5)*3],
         cpp_script = "RGCCA-2D",
         test_options = list(
-          n_reps = 10,
-          varying_options = c("n_times", "n_locs_D", "sigma_noise")
+          n_reps = 30,
+          varying_options = c("lambda", "sigma_noise")
         ),
         domain_and_locations = list(
           name_mesh = paste0("region_", 1:4),
@@ -65,9 +68,9 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
           n_nodes_T = c(51),
           n_nodes_HR_grid_D = c(4*1e3, 2*1e3, 2*1e3, 4*1e3),
           n_nodes_HR_grid_T = 501,
-          n_locs_D = c(100, 200, 400),
+          n_locs_D = c(400),
           n_locs_mult = c(3, 2, 2, 3),
-          n_times = c(51, 101, 201)
+          n_times = c(1200)
         ),
         model_options = list(          
           n_comp = 3,
@@ -75,15 +78,11 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
           tau = "optimal",
           scheme = "factorial"
         ),
-        data = list(
-          # delta = 0.01,
-          # TR = 2
-        ),
         noise = list(
-          sigma_noise = c(0.01, 0.1, 0.5, 0.8, 1, 2) #, 3, 4, 5, 6)
+          sigma_noise = c(0.01, 1, 2, 4)
         ),
         regularization = list(
-          lambda_grid = lambda_grid
+          lambda = 10^(-6:1)
         )
       )
 
@@ -92,8 +91,7 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
         paste(
           name_main_test,
           ## Include all the varying options!
-          "nt", sprintf("%04d", comb_row$n_times),
-          "nl", sprintf("%04d", comb_row$n_locs_D),
+          "l", sprintf("%.0e", comb_row$lambda),
           "sd", sprintf("%.3f", comb_row$sigma_noise),
           sep = "_"
         )

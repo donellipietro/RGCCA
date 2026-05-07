@@ -9,7 +9,11 @@ CXX = /opt/homebrew/bin/g++-15
 CXXFLAGS = -O3 -Wno-psabi -std=c++20 -march=native \
   -I/Users/pietrodonelli/Documents/University/fdaPDE/fdaPDE-cpp \
   -I/Users/pietrodonelli/Documents/University/fdaPDE/fdaPDE-cpp/fdaPDE/core \
-  -I/opt/homebrew/include/eigen3 \
+  -I/opt/homebrew/opt/ipopt/include/coin-or \
+  -I/opt/homebrew/include/eigen3
+LDFLAGS = -L/opt/homebrew/opt/ipopt/lib
+LDLIBS = -lipopt
+
 
 
 # Targets ----
@@ -89,7 +93,7 @@ compile:
 			out="cpp/$(MODEL)/$$bin"; \
 			if [ ! -f "$$out" ] || [ "$$src" -nt "$$out" ]; then \
 				echo "- $$src  ==>  $$out"; \
-				$(CXX) -o "$$out" "$$src" $(CXXFLAGS); \
+				$(CXX) -o "$$out" "$$src" $(CXXFLAGS) $(LDFLAGS) $(LDLIBS); \
 			else \
 				echo "- $$out is up to date"; \
 			fi; \

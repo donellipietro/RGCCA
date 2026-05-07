@@ -59,7 +59,7 @@ generate_data <- function(test_options, seed = 0) {
   Cor[4+1,4+2] <- Cor[4+2,4+1] <- -rho*0.9
   Cor[4+3,4+4] <- Cor[4+4,4+3] <- rho*0.8
   Cor[8+1,8+4] <- Cor[8+4,8+1] <- rho*0.8   
-  HH <- mvrnorm(n = n, mu = rep(0,12), Sigma = Sca %*% Cor %*% Sca, empirical = TRUE)
+  HH <- mvrnorm(n = n, mu = rep(0, 12), Sigma = Sca %*% Cor %*% Sca, empirical = TRUE)
   HH[,8+2] <- 0*HH[,8+2]
   HH[,8+3] <- 0*HH[,8+3]
   colnames(HH) <- c(paste0("H", 1, "g", 1:4), paste0("H", 2, "g", 1:4), paste0("H", 3, "g", 1:4))

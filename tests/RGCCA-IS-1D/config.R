@@ -20,5 +20,5 @@ IGNORE_CPP_OUTPUT = TRUE
 IGNORE_R_OUTPUT = TRUE
 
 ## Defaults
-name_main_test_default <- "test2"
+name_main_test_default <- "testSensitivity"
 order <- c(1,2,3) # Boxplot grouping | Rows | Cols 

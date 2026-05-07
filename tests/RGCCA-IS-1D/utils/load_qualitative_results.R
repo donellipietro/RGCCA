@@ -20,8 +20,10 @@ load_qualitative_results <- function(test_options, data, path_list) {
   
   ## Room for solutions
   A_locs <- list()
+  A_star_locs <- list()
   # E_locs <- list()
   A_grid <- list()
+  A_star_grid <- list()
   # E_grid <- list()
   
   ## Load batches
@@ -45,13 +47,11 @@ load_qualitative_results <- function(test_options, data, path_list) {
           n_groups <- test_options$dimensions$n_groups
           for(g in 1:n_groups) {
             A_locs[[paste0(g)]][[name_model]][[batch_index]] <- model$results$A_hat_locs[[g]]
-            # E_locs[[paste0(g)]][[name_model]][[batch_index]] <- model$results$E_hat_locs[[g]]
+            A_star_locs[[paste0(g)]][[name_model]][[batch_index]] <- model$results$A_star_hat_locs[[g]]
             if ("A_hat_grid" %in% names(model$results)) {
               A_grid[[paste0(g)]][[name_model]][[batch_index]] <- model$results$A_hat_grid[[g]]
+              A_star_grid[[paste0(g)]][[name_model]][[batch_index]] <- model$results$A_star_hat_grid[[g]]
             }
-            # if ("E_hat_grid" %in% names(model$results)) {
-            #   E_grid[[paste0(g)]][[name_model]][[batch_index]] <- model$results$E_hat_grid[[g]]
-            # }
           }
           
 
@@ -80,7 +80,9 @@ load_qualitative_results <- function(test_options, data, path_list) {
     # E_true_locs = data$E_locs,
     # E_true_grid = data$E_grid,
     A_locs = A_locs,
+    A_star_locs = A_star_locs,
     A_grid = A_grid,
+    A_star_grid = A_star_grid,
     # E_locs = E_locs,
     # E_grid = E_grid,
     domain_D = data$domain_D,

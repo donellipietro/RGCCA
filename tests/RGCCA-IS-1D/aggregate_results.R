@@ -176,6 +176,18 @@ for(g in 1:n_groups) {
     order = order, limits = limits
   )
   
+  #### RMSE[A_star] at locations ----
+  data_plot <- loaded_results$rmse[[paste0("A_star", g, "_locs")]]
+  title_prefix <- paste0("RMSE[A_star", g,"] at locations w.r.t")
+  values_name <- "RMSE"
+  limits <- c(0, max(data_plot[loaded_results$model_names]))
+  
+  ## Plot aggregated results
+  plot.aggregated_data(
+    loaded_results, data_plot, title_prefix, values_names,
+    order = order, limits = limits
+  )
+  
   #### RMSE[H] at locations ----
   data_plot <- loaded_results$rmse[[paste0("H", g)]]
   title_prefix <- paste0("RMSE[H", g,"] w.r.t")

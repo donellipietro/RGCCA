@@ -1,0 +1,6 @@
+print_level 0
+sb yes
+tol 1e-10
+mu_strategy adaptive
+print_user_options no
+print_timing_statistics no

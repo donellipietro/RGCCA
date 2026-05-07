@@ -498,7 +498,7 @@ plot.grouped_boxplots <- function(data,
     pivot_longer(cols = -Group, names_to = "SubGroup", values_to = "Score")
   
   ## Extract labels
-  groups_levels <- unique(data$Group)
+  groups_levels <- sort(unique(data$Group))
   subgroup_levels <- unique(data$SubGroup)
   if (is.null(group_labels)) group_labels <- groups_levels
   if (is.null(subgroup_labels)) subgroup_labels <- subgroup_levels
