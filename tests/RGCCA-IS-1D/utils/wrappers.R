@@ -42,7 +42,7 @@ fit_model <- function(model_name, data, path_list, test_options) {
          CPP_fGCCA_NN_cor_SPLINES = return(CPP_RGCCA(model_name, data, test_options, path_list)),
          CPP_fRGCCA_NN_SPLINES = return(CPP_RGCCA(model_name, data, test_options, path_list)),
          CPP_fGCCA_NN_cov_SPLINES = return(CPP_RGCCA(model_name, data, test_options, path_list)),
-
+         
          CPP_tfRGCCA = return(CPP_RGCCA(model_name, data, test_options, path_list)),
          R_FGCCA_cov = return(R_FGCCA(model_name, data, test_options)),
          {
@@ -67,7 +67,7 @@ R_RGCCA <- function(model_name, data, test_options) {
           R_GCCA_cor = {tau = 0},
           R_RGCCA = {tau = "optimal"},
           R_GCCA_cov = {tau = 1})
-          
+  
   # Fit multivariate PCA ----
   start.time <- Sys.time()
   
@@ -105,6 +105,11 @@ R_RGCCA <- function(model_name, data, test_options) {
   library(clue)
   X_locs <- list()
   for(g in 1:n_groups) {
+    sim <- abs(var(data$A_locs[[g]][,1:n_comp], A_locs[[g]]))
+    perm <- solve_LSAP(sim, maximum = TRUE)
+    A_locs[[g]] <- A_locs[[g]][, perm, drop = FALSE]
+    A_star_locs[[g]] <- A_star_locs[[g]][, perm, drop = FALSE]
+    H[[g]] <- H[[g]][, perm, drop = FALSE]
     for(h in 1:n_comp) {
       norm_H <- var(H[[g]][, h])
       norm_H <- if (is.na(norm_H) || norm_H == 0) 1 else sqrt(norm_H)
@@ -112,17 +117,12 @@ R_RGCCA <- function(model_name, data, test_options) {
       norm_A <- if (is.na(norm_A) || norm_A == 0) 1 else norm_A
       norm_A_star <- norm_l2(A_star_locs[[g]][, h])
       norm_A_star <- if (is.na(norm_A_star) || norm_A_star == 0) 1 else norm_A_star
-      sign <- 1
-      if(mean(A_locs[[g]][, h]) < 0) sign = -1
+      sign <- sign(cov(A_locs[[g]][, h], data$A_locs[[g]][, h]))
+      if(sign == 0) sign <- 1
       H[[g]][, h] <- sign * H[[g]][, h] / norm_H
       A_locs[[g]][, h] <- sign * A_locs[[g]][, h] / norm_A
       A_star_locs[[g]][, h] <- sign * A_star_locs[[g]][, h] / norm_A_star
     }
-    sim <- abs(var(data$A_locs[[g]][,1:n_comp], A_locs[[g]]))
-    perm <- solve_LSAP(sim, maximum = TRUE)
-    A_locs[[g]] <- A_locs[[g]][, perm, drop = FALSE]
-    A_star_locs[[g]] <- A_star_locs[[g]][, perm, drop = FALSE]
-    H[[g]] <- H[[g]][, perm, drop = FALSE]
   }
   
   # Save results ----
@@ -150,6 +150,15 @@ CPP_RGCCA <- function(model_name, data, test_options, path_list) {
   ## Info
   n_comp <- test_options$model_options$n_comp
   
+  lambda <- test_options$regularization$lambda
+  lambda_grid <- test_options$regularization$lambda_grid
+  if(model_name %in% c("CPP_GCCA_cor", "CPP_RGCCA", "CPP_GCCA_cov", "CPP_GCCA_NN_cor", "CPP_RGCCA_NN", "CPP_GCCA_NN_cov")){
+    if(!is.na(lambda) && lambda != 0) { return() }
+  } else {
+    if(!is.na(lambda) && lambda == 0) { return() }
+  }
+  
+  
   non_negative_weights = FALSE
   switch (model_name,
           CPP_GCCA_cor = {tau = 0},
@@ -172,7 +181,7 @@ CPP_RGCCA <- function(model_name, data, test_options, path_list) {
           CPP_GCCA_NN_cov = {tau = 1; non_negative_weights = TRUE},
           CPP_fGCCA_NN_cov_FEM = {tau = 1; non_negative_weights = TRUE},
           CPP_fGCCA_NN_cov_SPLINES = {tau = 1; non_negative_weights = TRUE},
-          )
+  )
   
   ## Initialize empty model
   model <- list()
@@ -202,6 +211,8 @@ CPP_RGCCA <- function(model_name, data, test_options, path_list) {
   write.csv(format(data$domain_D$knots, digits = 16), paste0(path_tmp_mesh, "knots_D.csv"))
   
   ## Write JSON arguments for the C++ solver ----
+  lambda <- test_options$regularization$lambda
+  lambda_selection_weights <- test_options$model_options$lambda_selection_weights
   cpp_script_arguments <- list()
   cpp_script_arguments$path_list <- list(
     mesh = path_tmp_mesh,
@@ -209,11 +220,15 @@ CPP_RGCCA <- function(model_name, data, test_options, path_list) {
     results = path_tmp_results
   )
   cpp_script_arguments$options$solver <- model_name
-  cpp_script_arguments$options$lambda <- test_options$regularization$lambda
+  cpp_script_arguments$options$lambda <- ifelse(lambda < 0, 1e-12, lambda)
   cpp_script_arguments$options$n_obs <- data$dimensions$n
   cpp_script_arguments$options$n_comp <- test_options$model_options$n_comp
   cpp_script_arguments$options$non_negative_weights <- non_negative_weights
   cpp_script_arguments$options$tau <- tau
+  lambda_selection_weights <- ifelse(lambda < 0 || lambda_selection_weights, TRUE, FALSE)
+  cpp_script_arguments$options$lambda_selection_weights <- lambda_selection_weights
+  cpp_script_arguments$options$n_bootstrap_samples <- test_options$model_options$n_bootstrap_samples
+  cpp_script_arguments$options$lambda_grid <- lambda_grid
   
   file_name_params <- paste0(
     test_options$name_test, "_", model_name, "_batch_",
@@ -231,108 +246,115 @@ CPP_RGCCA <- function(model_name, data, test_options, path_list) {
   # Run C++ executable ----
   start.time <- Sys.time()
   grid_D <- grid_T <- FALSE
+  Sys.unsetenv("DYLD_LIBRARY_PATH")
+  Sys.setenv(
+    OMP_NUM_THREADS = "1",
+    OPENBLAS_NUM_THREADS = "1",
+    VECLIB_MAXIMUM_THREADS = "1"
+  )
   switch (model_name,
           
           CPP_GCCA_cor = system(
-            paste0("cd ", path_cpp_script, " && ", "./fit_model_RGCCA ", file_name_params), 
+            paste0("cd ", path_cpp_script, " && ", "./fit_model_RGCCA ", file_name_params),
             ignore.stdout = IGNORE_CPP_OUTPUT),
           CPP_RGCCA = system(
-            paste0("cd ", path_cpp_script, " && ", "./fit_model_RGCCA ", file_name_params), 
+            paste0("cd ", path_cpp_script, " && ", "./fit_model_RGCCA ", file_name_params),
             ignore.stdout = IGNORE_CPP_OUTPUT),
           CPP_GCCA_cov = system(
-            paste0("cd ", path_cpp_script, " && ", "./fit_model_RGCCA ", file_name_params), 
+            paste0("cd ", path_cpp_script, " && ", "./fit_model_RGCCA ", file_name_params),
             ignore.stdout = IGNORE_CPP_OUTPUT),
           CPP_GCCA_NN_cor = system(
-            paste0("cd ", path_cpp_script, " && ", "./fit_model_RGCCA ", file_name_params), 
+            paste0("cd ", path_cpp_script, " && ", "./fit_model_RGCCA ", file_name_params),
             ignore.stdout = IGNORE_CPP_OUTPUT),
           CPP_RGCCA_NN = system(
-            paste0("cd ", path_cpp_script, " && ", "./fit_model_RGCCA ", file_name_params), 
+            paste0("cd ", path_cpp_script, " && ", "./fit_model_RGCCA ", file_name_params),
             ignore.stdout = IGNORE_CPP_OUTPUT),
           CPP_GCCA_NN_cov = system(
-            paste0("cd ", path_cpp_script, " && ", "./fit_model_RGCCA ", file_name_params), 
+            paste0("cd ", path_cpp_script, " && ", "./fit_model_RGCCA ", file_name_params),
             ignore.stdout = IGNORE_CPP_OUTPUT),
           
-          CPP_fGCCA_cor_FEM = { 
+          CPP_fGCCA_cor_FEM = {
             system(
-              paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_fem ", file_name_params), 
+              paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_fem ", file_name_params),
               ignore.stdout = IGNORE_CPP_OUTPUT
             )
             grid_D <- TRUE
           },
-          CPP_fRGCCA_FEM = { 
+          CPP_fRGCCA_FEM = {
             system(
-              paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_fem ", file_name_params), 
+              paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_fem ", file_name_params),
               ignore.stdout = IGNORE_CPP_OUTPUT
             )
             grid_D <- TRUE
           },
-          CPP_fGCCA_cov_FEM = { 
+          CPP_fGCCA_cov_FEM = {
             system(
-              paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_fem ", file_name_params), 
+              paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_fem ", file_name_params),
               ignore.stdout = IGNORE_CPP_OUTPUT
             )
             grid_D <- TRUE
           },
-          CPP_fGCCA_NN_cor_FEM = { 
+          CPP_fGCCA_NN_cor_FEM = {
             system(
-              paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_fem ", file_name_params), 
+              paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_fem ", file_name_params),
               ignore.stdout = IGNORE_CPP_OUTPUT
             )
             grid_D <- TRUE
           },
-          CPP_fRGCCA_NN_FEM = { 
+          CPP_fRGCCA_NN_FEM = {
             system(
-              paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_fem ", file_name_params), 
+              paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_fem ", file_name_params),
               ignore.stdout = IGNORE_CPP_OUTPUT
             )
             grid_D <- TRUE
           },
-          CPP_fGCCA_NN_cov_FEM = { 
+          CPP_fGCCA_NN_cov_FEM = {
             system(
-              paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_fem ", file_name_params), 
+              paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_fem ", file_name_params),
               ignore.stdout = IGNORE_CPP_OUTPUT
             )
             grid_D <- TRUE
           },
           
-          CPP_fGCCA_cor_SPLINES = { 
+          
+          CPP_fGCCA_cor_SPLINES = {
             system(
-              paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_splines ", file_name_params), 
+              paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_splines ", file_name_params),
               ignore.stdout = IGNORE_CPP_OUTPUT
             )
             grid_D <- TRUE
           },
-          CPP_fRGCCA_SPLINES = { 
+          CPP_fRGCCA_SPLINES = {
             system(
-              paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_splines ", file_name_params), 
+              paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_splines ", file_name_params),
               ignore.stdout = IGNORE_CPP_OUTPUT
             )
             grid_D <- TRUE
           },
-          CPP_fGCCA_cov_SPLINES = { 
+          CPP_fGCCA_cov_SPLINES = {
             system(
-              paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_splines ", file_name_params), 
+              paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_splines ", file_name_params),
               ignore.stdout = IGNORE_CPP_OUTPUT
             )
             grid_D <- TRUE
           },
-          CPP_fGCCA_NN_cor_SPLINES = { 
+          CPP_fGCCA_NN_cor_SPLINES = {
             system(
-              paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_splines ", file_name_params), 
+              paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_splines ", file_name_params),
               ignore.stdout = IGNORE_CPP_OUTPUT
             )
             grid_D <- TRUE
           },
-          CPP_fRGCCA_NN_SPLINES = { 
+          CPP_fRGCCA_NN_SPLINES = {
             system(
-              paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_splines ", file_name_params), 
+              paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_splines ", file_name_params),
               ignore.stdout = IGNORE_CPP_OUTPUT
             )
             grid_D <- TRUE
           },
-          CPP_fGCCA_NN_cov_SPLINES = { 
+          CPP_fGCCA_NN_cov_SPLINES = {
             system(
-              paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_splines ", file_name_params), 
+              paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_splines ", file_name_params),
               ignore.stdout = IGNORE_CPP_OUTPUT
             )
             grid_D <- TRUE
@@ -359,21 +381,7 @@ CPP_RGCCA <- function(model_name, data, test_options, path_list) {
     A_star_locs[[g]] <- as.matrix(read.csv(paste(path_tmp_results, "A_star", g, "_hat_locs.csv", sep = "")))
     if(grid_D) A_grid[[g]] <- as.matrix(read.csv(paste(path_tmp_results, "A", g, "_hat_grid.csv", sep = "")))
     if(grid_D) A_star_grid[[g]] <- as.matrix(read.csv(paste(path_tmp_results, "A_star", g, "_hat_grid.csv", sep = "")))
-    for(h in 1:n_comp) {
-      norm_H <- var(H[[g]][, h])
-      norm_H <- if (is.na(norm_H) || norm_H == 0) 1 else sqrt(norm_H)
-      norm_A <- norm_l2(A_locs[[g]][, h])
-      norm_A <- if (is.na(norm_A) || norm_A == 0) 1 else norm_A
-      norm_A_star <- norm_l2(A_star_locs[[g]][, h])
-      norm_A_star <- if (is.na(norm_A_star) || norm_A_star == 0) 1 else norm_A_star
-      sign <- 1
-      if(mean(A_locs[[g]][, h]) < 0) sign = -1
-      H[[g]][, h] <- sign * H[[g]][, h] / norm_H
-      A_locs[[g]][, h] <- sign * A_locs[[g]][, h] / norm_A
-      A_star_locs[[g]][, h] <- sign * A_star_locs[[g]][, h] / norm_A_star
-      if(grid_D) A_grid[[g]][, h] <- sign * A_grid[[g]][, h] / norm_A
-      if(grid_D) A_star_grid[[g]][, h] <- sign * A_star_grid[[g]][, h] / norm_A_star
-    }
+    
     sim <- abs(var(data$A_locs[[g]][,1:n_comp], A_locs[[g]]))
     perm <- solve_LSAP(sim, maximum = TRUE)
     A_locs[[g]] <- A_locs[[g]][, perm, drop = FALSE]  
@@ -381,6 +389,22 @@ CPP_RGCCA <- function(model_name, data, test_options, path_list) {
     if(grid_D) A_grid[[g]] <- A_grid[[g]][, perm, drop = FALSE]  
     if(grid_D) A_star_grid[[g]] <- A_star_grid[[g]][, perm, drop = FALSE]  
     H[[g]] <- H[[g]][, perm, drop = FALSE]
+    
+    for(h in 1:n_comp) {
+      norm_H <- var(H[[g]][, h])
+      norm_H <- if (is.na(norm_H) || norm_H == 0) 1 else sqrt(norm_H)
+      norm_A <- norm_l2(A_locs[[g]][, h])
+      norm_A <- if (is.na(norm_A) || norm_A == 0) 1 else norm_A
+      norm_A_star <- norm_l2(A_star_locs[[g]][, h])
+      norm_A_star <- if (is.na(norm_A_star) || norm_A_star == 0) 1 else norm_A_star
+      sign <- sign(cov(A_locs[[g]][, h], data$A_locs[[g]][, h]))
+      if(sign == 0) sign <- 1
+      H[[g]][, h] <- sign * H[[g]][, h] / norm_H
+      A_locs[[g]][, h] <- sign * A_locs[[g]][, h] / norm_A
+      A_star_locs[[g]][, h] <- sign * A_star_locs[[g]][, h] / norm_A_star
+      if(grid_D) A_grid[[g]][, h] <- sign * A_grid[[g]][, h] / norm_A
+      if(grid_D) A_star_grid[[g]][, h] <- sign * A_star_grid[[g]][, h] / norm_A_star
+    }
   }
   
   ## Save results ----
@@ -399,6 +423,99 @@ CPP_RGCCA <- function(model_name, data, test_options, path_list) {
     objective_h <- as.matrix(read.csv(paste(path_tmp_results, "objective", h, ".csv", sep = "")))
     n_last <- length(objective_h)
     model$objective <- c(model$objective, objective_h[n_last])
+  }
+  
+  ## Load bootstrap selection results ----
+  if(lambda_selection_weights) {
+    bootstrap <- vector("list", n_comp)
+    
+    for(h in 1:n_comp) {
+      lambda_grid <- as.numeric(read.csv(
+        paste0(path_tmp_results, "bootstrap_lambda_grid", h, ".csv")
+      )[, 1])
+      
+      criterion <- as.numeric(read.csv(
+        paste0(path_tmp_results, "bootstrap_criterion", h, ".csv")
+      )[, 1])
+      
+      lambda_opt <- as.numeric(read.csv(
+        paste0(path_tmp_results, "bootstrap_lambda_opt", h, ".csv")
+      )[1, 1])
+      
+      w_fit_locs  <- vector("list", length(lambda_grid))
+      w_fit_grid  <- vector("list", length(lambda_grid))
+      w_boot_locs <- vector("list", length(lambda_grid))
+      w_boot_grid <- vector("list", length(lambda_grid))
+      w_min_locs  <- vector("list", length(lambda_grid))
+      w_min_grid  <- vector("list", length(lambda_grid))
+      
+      for(i in seq_along(lambda_grid)) {
+        if(criterion[i]>=0) {
+          w_fit_locs[[i]]  <- vector("list", n_groups)
+          w_fit_grid[[i]]  <- vector("list", n_groups)
+          w_boot_locs[[i]] <- vector("list", n_groups)
+          w_boot_grid[[i]] <- vector("list", n_groups)
+          w_min_locs[[i]]  <- vector("list", n_groups)
+          w_min_grid[[i]]  <- vector("list", n_groups)
+          
+          for(g in 1:n_groups) {
+            for(type in c("fit", "boot", "wmin")) {
+              W_locs <- as.matrix(read.csv(
+                paste0(path_tmp_results,
+                       "bootstrap_weights_", type,
+                       "_comp", h,
+                       "_lambda", i,
+                       "_block", g,
+                       "_locs.csv")
+              ))
+              
+              W_grid <- as.matrix(read.csv(
+                paste0(path_tmp_results,
+                       "bootstrap_weights_", type,
+                       "_comp", h,
+                       "_lambda", i,
+                       "_block", g,
+                       "_grid.csv")
+              ))
+              
+              ## normalize column-wise using location norm
+              if(type != "wmin") {
+                norms <- apply(W_locs, 2, norm_l2)
+                norms[is.na(norms) | norms == 0] <- 1
+                
+                W_locs <- sweep(W_locs, 2, norms, "/")
+                W_grid <- sweep(W_grid, 2, norms, "/")
+              }
+              
+              if(type == "fit") {
+                w_fit_locs[[i]][[g]] <- W_locs
+                w_fit_grid[[i]][[g]] <- W_grid
+              } else if(type == "boot") {
+                w_boot_locs[[i]][[g]] <- W_locs
+                w_boot_grid[[i]][[g]] <- W_grid
+              } else if(type == "wmin") {
+                w_min_locs[[i]][[g]] <- W_locs
+                w_min_grid[[i]][[g]] <- W_grid
+              }
+            }
+          }
+        }
+      }
+      
+      bootstrap[[h]] <- list(
+        lambda_grid = lambda_grid,
+        criterion = criterion,
+        lambda_opt = lambda_opt,
+        w_fit_locs = w_fit_locs,
+        w_fit_grid = w_fit_grid,
+        w_boot_locs = w_boot_locs,
+        w_boot_grid = w_boot_grid,
+        w_min_locs = w_min_locs,
+        w_min_grid = w_min_grid
+      )
+    }
+    
+    model$results$bootstrap_selection <- bootstrap
   }
   
   return(model)

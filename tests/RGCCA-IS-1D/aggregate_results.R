@@ -11,7 +11,7 @@ graphics.off()
 options(warn = -1)
 
 width = 13
-height = 10
+height = 15
 
 # README ----
 # Assumes all batches for each option have already been run and saved.
@@ -98,14 +98,14 @@ if (is.null(order) || length(order) != length(loaded_results$varying_options)) {
 data_plot <- loaded_results$execution_time
 title_prefix <- "Execution times w.r.t the"
 values_name <- "Time [seconds]"
-limits <- c(0, max(data_plot[loaded_results$model_names]))
+limits <- c(0, max(data_plot[loaded_results$model_names], na.rm = TRUE))
 
 plots_catalog <- list(
   boxplots = TRUE,
-  lines = TRUE,
-  logx = TRUE,
-  loglog = TRUE,
-  normalized = TRUE
+  lines = FALSE,
+  logx = FALSE,
+  loglog = FALSE,
+  normalized = FALSE
 )
 
 

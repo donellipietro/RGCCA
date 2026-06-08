@@ -67,26 +67,27 @@ generate_data <- function(test_options, seed = 0) {
   H1 <- HH[, 1:4]
   H2 <- HH[, 5:8]
   H3 <- HH[, 9:12]
+  H4 <- 0*HH[, 9:12]
   
   ## Group 1
-  A_locs[[1]] <- cbind(cbind(a_gen(locs_D, 1), a_gen(locs_D, 2), a_gen(locs_D, 3))[, 1:n_comp])
-  A_grid[[1]] <- cbind(cbind(a_gen(grid_D, 1), a_gen(grid_D, 2), a_gen(grid_D, 3))[, 1:n_comp])
-  H[[1]] <- cbind(cbind(H1[,1], H2[, 1], H3[, 1])[, 1:n_comp])
+  A_locs[[1]] <- cbind(cbind(a_gen(locs_D, 1), a_gen(locs_D, 2), a_gen(locs_D, 3), a_gen(locs_D, 0))[, 1:n_comp])
+  A_grid[[1]] <- cbind(cbind(a_gen(grid_D, 1), a_gen(grid_D, 2), a_gen(grid_D, 3), a_gen(locs_D, 0))[, 1:n_comp])
+  H[[1]] <- cbind(cbind(H1[,1], H2[, 1], H3[, 1], H4[, 1])[, 1:n_comp])
   
   ## Group 2
-  A_locs[[2]] <- cbind(cbind(a_gen(locs_D, 2), a_gen(locs_D, 1), a_gen(locs_D, 0))[, 1:n_comp])
-  A_grid[[2]] <- cbind(cbind(a_gen(grid_D, 2), a_gen(grid_D, 1), a_gen(grid_D, 0))[, 1:n_comp])
-  H[[2]] <- cbind(cbind(H1[,2], H2[, 2], H3[, 2])[, 1:n_comp])
+  A_locs[[2]] <- cbind(cbind(a_gen(locs_D, 2), a_gen(locs_D, 1), a_gen(locs_D, 0), a_gen(locs_D, 0))[, 1:n_comp])
+  A_grid[[2]] <- cbind(cbind(a_gen(grid_D, 2), a_gen(grid_D, 1), a_gen(grid_D, 0), a_gen(locs_D, 0))[, 1:n_comp])
+  H[[2]] <- cbind(cbind(H1[,2], H2[, 2], H3[, 2], H4[, 2])[, 1:n_comp])
   
   ## Group 3
-  A_locs[[3]] <- cbind(cbind(a_gen(locs_D, 1), a_gen(locs_D, 3), a_gen(locs_D, 0))[, 1:n_comp])
-  A_grid[[3]] <- cbind(cbind(a_gen(grid_D, 1), a_gen(grid_D, 3), a_gen(grid_D, 0))[, 1:n_comp])
-  H[[3]] <- cbind(cbind(H1[,3], H2[, 3], H3[, 3])[, 1:n_comp])
+  A_locs[[3]] <- cbind(cbind(a_gen(locs_D, 1), a_gen(locs_D, 3), a_gen(locs_D, 0), a_gen(locs_D, 0))[, 1:n_comp])
+  A_grid[[3]] <- cbind(cbind(a_gen(grid_D, 1), a_gen(grid_D, 3), a_gen(grid_D, 0), a_gen(locs_D, 0))[, 1:n_comp])
+  H[[3]] <- cbind(cbind(H1[,3], H2[, 3], H3[, 3], H4[, 3])[, 1:n_comp])
   
   ## Group 4
-  A_locs[[4]] <- cbind(cbind(a_gen(locs_D, 1), a_gen(locs_D, 3), a_gen(locs_D, 2))[, 1:n_comp])
-  A_grid[[4]] <- cbind(cbind(a_gen(grid_D, 1), a_gen(grid_D, 3), a_gen(grid_D, 2))[, 1:n_comp])
-  H[[4]] <- cbind(cbind(H1[,4], H2[, 4], H3[, 4])[, 1:n_comp])
+  A_locs[[4]] <- cbind(cbind(a_gen(locs_D, 1), a_gen(locs_D, 3), a_gen(locs_D, 2), a_gen(locs_D, 0))[, 1:n_comp])
+  A_grid[[4]] <- cbind(cbind(a_gen(grid_D, 1), a_gen(grid_D, 3), a_gen(grid_D, 2), a_gen(locs_D, 0))[, 1:n_comp])
+  H[[4]] <- cbind(cbind(H1[,4], H2[, 4], H3[, 4], H4[, 4])[, 1:n_comp])
 
   
   ## Assemble data and normalize loadings and canonical components

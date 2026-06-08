@@ -99,10 +99,10 @@ limits <- c(0, max(data_plot[loaded_results$model_names]))
 
 plots_catalog <- list(
   boxplots = TRUE,
-  lines = TRUE,
-  logx = TRUE,
-  loglog = TRUE,
-  normalized = TRUE
+  lines = FALSE,
+  logx = FALSE,
+  loglog = FALSE,
+  normalized = FALSE
 )
 
 

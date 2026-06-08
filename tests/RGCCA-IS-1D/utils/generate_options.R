@@ -49,140 +49,25 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
   
   ## Define the color palette
   model_colors <- c(
-    brewer.pal(5, "Reds")[5:3], 
-    brewer.pal(5, "Oranges")[5:3],
+    brewer.pal(5, "Reds")[5:3],     # R Multivariate
+    brewer.pal(5, "Reds")[5:3],     # CPP Multivariate
     
-    brewer.pal(5, "Blues")[5:3],
-    brewer.pal(5, "Blues")[5:3],
+    brewer.pal(5, "Blues")[5:3],    # CPP Functional FEM
+    brewer.pal(5, "Blues")[5:3],    # CPP Functional SPLINES
     
-    brewer.pal(5, "Greens")[5:3],
-    brewer.pal(5, "Purples")[5:3],
-    brewer.pal(5, "Purples")[5:3],
+    brewer.pal(5, "Oranges")[5:3],  # CPP Multivariate NN
+    brewer.pal(5, "Purples")[5:3],  # CPP Functional NN FEM
+    brewer.pal(5, "Purples")[5:3],  # CPP Functional NN SPLINES
     
     "grey", "grey")
   
   switch(name_main_test,
-         testMV = {
-           ## Set the desired options
-           options <- list(
-             model_names = model_names[c(1,4,7, 2,5,8, 3,6,9)][c(1,2, 4,5, 7,8)],
-             model_labels = model_labels[c(1,4,7, 2,5,8, 3,6,9)][c(1,2, 4,5, 7,8)],
-             model_colors = model_colors[c(1,4,7, 2,5,8, 3,6,9)][c(1,2, 4,5, 7,8)],
-             cpp_script = "RGCCA",
-             test_options = list(
-               n_reps = 3,
-               varying_options = c("n", "sigma_noise") # , "n_nodes_D"
-             ),
-             domain_and_locations = list(
-               name_mesh = "unit_interval",
-               locs_eq_nodes = FALSE
-             ),
-             dimensions = list(
-               n_groups = 4,
-               n_nodes_D = 21, # c(21, 51),
-               n_nodes_HR_grid_D = 200,
-               n = c(50, 100, 200, 400, 800, 1600, 3200, 6400)
-             ),
-             model_options = list(          
-               n_comp = 3
-             ),
-             data = list(
-               delta = 0.05
-             ),
-             noise = list(
-               sigma_noise = c(0.01, 0.1, 0.5, 0.8)
-             )
-           )
-           
-           ## File naming policy
-           name_fun <- function(opts_i, comb_row) {
-             paste(
-               name_main_test,
-               ## Include all the varying options!
-               "n", sprintf("%04d", comb_row$n),
-               "sd", sprintf("%.3f", comb_row$sigma_noise),
-               sep = "_"
-             )
-           }
-           
-           ## Expand ONLY the varying options
-           options_list <- explode_options(
-             options,
-             by = options$test_options$varying_options,
-             name_fun = name_fun
-           )
-           
-           ## Write JSON files
-           write_options_json(
-             options_list,
-             dir = path_queue,
-             name_field = "name_test"
-           )
-         },
-         testMV_dual = {
-           ## Set the desired options
-           options <- list(
-             model_names = model_names[c(1,4,7, 2,5,8, 3,6,9)][-c(3,6,9)],
-             model_labels = model_labels[c(1,4,7, 2,5,8, 3,6,9)][-c(3,6,9)],
-             model_colors = model_colors[c(1,4,7, 2,5,8, 3,6,9)][-c(3,6,9)],
-             cpp_script = "RGCCA",
-             test_options = list(
-               n_reps = 3,
-               varying_options = c("n_locs", "sigma_noise") # , "n_nodes_D"
-             ),
-             domain_and_locations = list(
-               name_mesh = "unit_interval",
-               locs_eq_nodes = FALSE
-             ),
-             dimensions = list(
-               n_groups = 4,
-               n_nodes_D = 21, #c(21, 51),
-               n_nodes_HR_grid_D = 200,
-               n = 300,
-               n_locs = c(101, 201, 401, 801)
-             ),
-             model_options = list(          
-               n_comp = 3
-             ),
-             data = list(
-               # delta = c()
-             ),
-             noise = list(
-               sigma_noise = c(0.01, 0.1, 0.5, 0.8)
-             )
-           )
-           
-           ## File naming policy
-           name_fun <- function(opts_i, comb_row) {
-             paste(
-               name_main_test,
-               ## Include all the varying options!
-               "n_locs", sprintf("%04d", comb_row$n_locs),
-               "sd", sprintf("%.3f", comb_row$sigma_noise),
-               sep = "_"
-             )
-           }
-           
-           ## Expand ONLY the varying options
-           options_list <- explode_options(
-             options,
-             by = options$test_options$varying_options,
-             name_fun = name_fun
-           )
-           
-           ## Write JSON files
-           write_options_json(
-             options_list,
-             dir = path_queue,
-             name_field = "name_test"
-           )
-         },
          testSensitivity = {
            ## Set the desired options
            options <- list(
-             model_names = model_names[c(4,7,10,13,16,19, 5,8,11,14,17,20, 6,9,12,15,18,21)],
-             model_labels = model_labels[c(4,7,10,13,16,19, 5,8,11,14,17,20, 6,9,12,15,18,21)],
-             model_colors = model_colors[c(4,7,10,13,16,19, 5,8,11,14,17,20, 6,9,12,15,18,21)],
+             model_names = model_names[c(6,9,12,15,18,21)],
+             model_labels = model_labels[c(6,9,12,15,18,21)],
+             model_colors = model_colors[c(6,9,12,15,18,21)],
              cpp_script = "RGCCA",
              test_options = list(
                n_reps = 30,
@@ -194,19 +79,24 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
              ),
              dimensions = list(
                n_groups = 4,
-               n_nodes_D = 21, #c(21, 51),
+               n_nodes_D = 101,
                n_nodes_HR_grid_D = 200,
-               n = 200,
+               n = 1200,
                n_locs = 101
              ),
              model_options = list(          
-               n_comp = 3
+               n_comp = 3,
+               lambda_selection_weights = FALSE,
+               n_bootstrap_samples = 100
              ),
              noise = list(
-               sigma_noise = c(0.01, 0.1, 0.5, 0.8, 1.0, 2.0)
+               sigma_noise = c(0.01, 1.0, 2.0, 3.0, 4.0, 5.0)
              ),
              regularization = list(
-               lambda = 10^(-9:1)
+               lambda = c(-1, 0, 10^(-9:-2)),
+               lambda_grid = list(
+                 10^(-9:-2), 10^(-9:-2), 10^(-9:-2)
+               )
              )
            )
            
@@ -235,16 +125,16 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
              name_field = "name_test"
            )
          },
-         test1 = {
+         testBootstrap = {
            ## Set the desired options
            options <- list(
-             model_names = model_names[c(1,10,13, 2,11,14, 3,12,15)], #[c(7,8,9)],
-             model_labels = model_labels[c(1,10,13, 2,11,14, 3,12,15)], # [c(7,8,9)],
-             model_colors = model_colors[c(1,10,10, 2,11,11, 3,12,12)], #[c(7,8,9)],
+             model_names = model_names[c(9,12,18,21)],
+             model_labels = model_labels[c(9,12,18,21)],
+             model_colors = model_colors[c(9,12,18,21)],
              cpp_script = "RGCCA",
              test_options = list(
-               n_reps = 3,
-               varying_options = c("n_locs", "sigma_noise") # , "n_nodes_D"
+               n_reps = 30,
+               varying_options = c("n_bootstrap_samples", "sigma_noise")
              ),
              domain_and_locations = list(
                name_mesh = "unit_interval",
@@ -252,22 +142,24 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
              ),
              dimensions = list(
                n_groups = 4,
-               n_nodes_D = 21, #c(21, 51),
+               n_nodes_D = 101,
                n_nodes_HR_grid_D = 200,
-               n = 200,
-               n_locs = c(21, 51, 101, 201)
+               n = 1200,
+               n_locs = 101
              ),
              model_options = list(          
-               n_comp = 3
-             ),
-             data = list(
-               # delta = c(0.05, 0.02, 0.01, 0.005)  locations 
+               n_comp = 3,
+               lambda_selection_weights = FALSE,
+               n_bootstrap_samples = c(10, 100, 500, 1000)
              ),
              noise = list(
-               sigma_noise = c(0.01, 0.1, 0.5, 0.8)
+               sigma_noise = c(0.01, 1.0, 2.0, 3.0, 4.0, 5.0)
              ),
              regularization = list(
-               lambda = 1e-4
+               lambda = c(-1),
+               lambda_grid = list(
+                 10^(-9:-2), 10^(-9:-2), 10^(-9:-2)
+               )
              )
            )
            
@@ -276,68 +168,7 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
              paste(
                name_main_test,
                ## Include all the varying options!
-               "nl", sprintf("%04d", comb_row$n_locs),
-               "sd", sprintf("%.3f", comb_row$sigma_noise),
-               sep = "_"
-             )
-           }
-           
-           ## Expand ONLY the varying options
-           options_list <- explode_options(
-             options,
-             by = options$test_options$varying_options,
-             name_fun = name_fun
-           )
-           
-           ## Write JSON files
-           write_options_json(
-             options_list,
-             dir = path_queue,
-             name_field = "name_test"
-           )
-         },
-         test2 = {
-           ## Set the desired options
-           options <- list(
-             model_names = model_names[c(3,17,12,15)],
-             model_labels = model_labels[c(3,17,12,15)],
-             model_colors = model_colors[c(3,13,12,12)],
-             cpp_script = "RGCCA",
-             test_options = list(
-               n_reps = 10,
-               varying_options = c("n_locs", "sigma_noise")
-             ),
-             domain_and_locations = list(
-               name_mesh = "unit_interval",
-               locs_eq_nodes = FALSE
-             ),
-             dimensions = list(
-               n_groups = 4,
-               n_nodes_D = 21, #c(21, 51),
-               n_nodes_HR_grid_D = 200,
-               n = 200,
-               n_locs = c(101)
-             ),
-             model_options = list(          
-               n_comp = 3
-             ),
-             data = list(
-               # delta = c(0.01)  locations 
-             ),
-             noise = list(
-               sigma_noise = c(0.01, 0.1, 0.5, 0.8)
-             ),
-             regularization = list(
-               lambda = 1e-4
-             )
-           )
-           
-           ## File naming policy
-           name_fun <- function(opts_i, comb_row) {
-             paste(
-               name_main_test,
-               ## Include all the varying options!
-               "nl", sprintf("%04d", comb_row$n_locs),
+               "nbs", sprintf("%.0f", comb_row$n_bootstrap_samples),
                "sd", sprintf("%.3f", comb_row$sigma_noise),
                sep = "_"
              )

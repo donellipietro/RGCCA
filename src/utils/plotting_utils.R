@@ -897,7 +897,7 @@ plot.aggregated_data <- function(loaded_results, data_plot_orig, title_prefix, v
       if (length(valid_models) == 0) next
       
       ## Aggregate with median per x (Group)
-      data_plot_aggregated <- aggregate(. ~ Group, data = data_plot_trimmed[, c("Group", valid_models)], FUN = median)
+      # data_plot_aggregated <- aggregate(. ~ Group, data = data_plot_trimmed[, c("Group", valid_models)], FUN = median)
       
       ## Boxplots
       if (isTRUE(plots_catalog$boxplots)) {

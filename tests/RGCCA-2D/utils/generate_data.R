@@ -136,13 +136,13 @@ generate_data <- function(test_options, seed = 0) {
     
     E_locs[[g]] <- cbind(
       4.0 * e_gen_hz(locs_T, freqs[1]),
-      3.0 * e_gen_hz(locs_T, freqs[2]),
-      2.5 * e_gen_hz(locs_T, freqs[3])
+      1.2 * e_gen_hz(locs_T, freqs[2]),
+      1.0 * e_gen_hz(locs_T, freqs[3])
     )
     E_grid[[g]] <- cbind(
       4.0 * e_gen_hz(grid_T, freqs[1]),
-      3.0 * e_gen_hz(grid_T, freqs[2]),
-      2.5 * e_gen_hz(grid_T, freqs[3])
+      1.2 * e_gen_hz(grid_T, freqs[2]),
+      1.0 * e_gen_hz(grid_T, freqs[3])
     )
     
     ## ----- assemble noiseless data for group g ----- 

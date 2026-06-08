@@ -48,6 +48,7 @@ int main(int argc, char* argv[]) {
   
   // Options
   RGCCA<IndependentSampling>::Options options;
+  options.init = Init::Uniform; 
   
   if (tau < 0.0) {
     options.mode = Mode::Regularized;

@@ -57,9 +57,9 @@ test_options <- list(
     n_nodes_T = c(51),
     n_nodes_HR_grid_D = c(4*1e3, 2*1e3, 2*1e3, 4*1e3),
     n_nodes_HR_grid_T = 501,
-    n_locs_D = c(400),
+    n_locs_D = c(800),
     n_locs_mult = c(3, 2, 2, 3),
-    n_times = c(201)
+    n_times = c(1200)
   ),
   model_options = list(          
     n_comp = 3
@@ -80,11 +80,11 @@ path_list <- update_paths(path_list, "test1", test_options)
 data <- generate_data(test_options, seed = 0)
 
 
-model_name <- "CPP_GCCA_cov"
-result <- CPP_RGCCA(model_name, data, test_options, path_list)
-
-model_name <- "CPP_fGCCA_cov"
-result <- CPP_RGCCA(model_name, data, test_options, path_list)
+# model_name <- "CPP_GCCA_cov"
+# result <- CPP_RGCCA(model_name, data, test_options, path_list)
+# 
+# model_name <- "CPP_fGCCA_cov"
+# result <- CPP_RGCCA(model_name, data, test_options, path_list)
 
 IGNORE_CPP_OUTPUT <- FALSE
 model_name <- "CPP_fGCCA_NN_cov"
