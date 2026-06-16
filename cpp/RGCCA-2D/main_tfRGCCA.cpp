@@ -101,7 +101,7 @@ int main(int argc, char* argv[]) {
     Eigen::Matrix<double, Dynamic, Dynamic> X = read_csv<double>(path_data + "X" + std::to_string(i) + ".csv").as_matrix();
     auto& level = gf.insert_scalar_layer<POINT>("data", path_data + "locs_D_" + std::to_string(i) + ".csv");
     level.load_blk("X" + std::to_string(i), X.transpose());
-    rgcca.add_functional_block("X" + std::to_string(i), times, gf, fe_normcovmax_elliptic(a_D, F_D));
+    rgcca.add_functional_block("X" + std::to_string(i), times, gf, std::move(X), fe_normcovmax_elliptic(a_D, F_D));
     
   }
   
@@ -130,7 +130,7 @@ int main(int argc, char* argv[]) {
     write_csv(path_results + "E"+ std::to_string(id) + "_hat_locs.csv", block -> components_m());
     write_csv(path_results + "E"+ std::to_string(id) + "_hat_grid.csv", Psi_grid_T * block -> components());
     write_csv(path_results + "A"+ std::to_string(id) + "_hat_grid.csv", Psi_grid_D_vec[id-1] * block -> weights());
-    write_csv(path_results + "A_star"+ std::to_string(id) + "_hat_grid.csv", Psi_grid_D_vec[id-1] * block -> weights());
+    write_csv(path_results + "A_star"+ std::to_string(id) + "_hat_grid.csv", Psi_grid_D_vec[id-1] * block -> weights_star());
     id ++;
   }
   

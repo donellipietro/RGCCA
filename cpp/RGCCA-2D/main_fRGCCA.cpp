@@ -69,7 +69,7 @@ int main(int argc, char* argv[]) {
   double lambda = jroot["options"].value("lambda", 1.);
   bool non_negative_weights = jroot["options"].value("non_negative_weights", false);
   bool lambda_selection_weights = jroot["options"].value("lambda_selection_weights", false);
-  int n_bootstrap_samples = jroot["options"].value("n_bootstrap_samples", 10);
+  int n_bootstrap_samples = jroot["options"].value("n_bootstrap_samples", 1000);
   int stationary_block_length = jroot["options"].value("stationary_block_length", 20);
   
   // Chose options
@@ -94,6 +94,20 @@ int main(int argc, char* argv[]) {
     options.weight_sign_constraint = WeightSignConstraint::NonNegative;
   } else {
     options.weight_sign_constraint = WeightSignConstraint::None;
+  }
+  
+  // Bootstrap
+  RGCCA<IndependentSampling>::BootstrapConfig bootstrap_config;
+  bootstrap_config.B_max = n_bootstrap_samples;
+  bootstrap_config.patience = 1;
+  bootstrap_config.B_per_thread_per_batch = 5;
+  bootstrap_config.stable_batches_required = 3;
+  bootstrap_config.active_block_tol = 1e-3;
+  if (stationary_block_length == 0) {
+    bootstrap_config.resampling_strategy = ResamplingStrategy::Ordinary;
+  } else {
+    bootstrap_config.resampling_strategy = ResamplingStrategy::Stationary;
+    bootstrap_config.stationary_block_length = stationary_block_length;
   }
   
   // Model initialization
@@ -132,7 +146,6 @@ int main(int argc, char* argv[]) {
   
   // Set lambda_l
   if(lambda_selection_weights) {
-    rgcca.set_n_bootstrap_samples(n_bootstrap_samples);
     auto lambda_grid = parse_lambda_grid_weights(jroot["options"]);
     if (!lambda_grid.empty()) {
       rgcca.set_lambda_grid_weights(lambda_grid);
@@ -141,13 +154,8 @@ int main(int argc, char* argv[]) {
     rgcca.set_lambda_weights_all(lambda);
   }
   
-  // resampling strategy
-  if (stationary_block_length == 0) {
-    rgcca.set_resampling_strategy(ResamplingStrategy::Ordinary);
-  } else {
-    rgcca.set_resampling_strategy(ResamplingStrategy::Stationary);
-    rgcca.set_stationary_block_length(stationary_block_length);
-  }
+  // Bootstrap
+  rgcca.set_bootstrap_config(bootstrap_config);
   
   // Add connections
   rgcca.connect(0,1);

@@ -42,13 +42,12 @@ int main(int argc, char* argv[]) {
   // Extract options
   int n_obs = jroot["options"].value("n_obs", 101);
   int n_comp = jroot["options"].value("n_comp", 3);
-  double sd_noise = jroot["options"].value("sd_noise", 0.);
   double tau = jroot["options"].value("tau", 0.);
   bool non_negative_weights = jroot["options"].value("non_negative_weights", false);
   
   // Options
   RGCCA<IndependentSampling>::Options options;
-  options.init = Init::Uniform; 
+  options.init_strategy = InitStrategy::SVD;
   
   if (tau < 0.0) {
     options.mode = Mode::Regularized;
@@ -70,7 +69,7 @@ int main(int argc, char* argv[]) {
   // Add blocks
   for (int i = 1; i <=4; ++i) {
     Eigen::Matrix<double, Dynamic, Dynamic> X = read_csv<double>(path_data + "X" + std::to_string(i) + ".csv").as_matrix();
-    rgcca.add_multivariate_block("X" + std::to_string(i), X);
+    rgcca.add_multivariate_block("X" + std::to_string(i), std::move(X));
   }
 
   // Add connections

@@ -7,7 +7,7 @@
 start=$(date +%s.%N)
 
 # Define the number of high-performance cores
-NUM_CORES=8
+NUM_CORES=12
 
 # Define the total number of CPU cores
 TOTAL_CORES=$(sysctl -n hw.physicalcpu)
@@ -24,7 +24,7 @@ fi
 ###############################################################################
 
 
-RScript src/init.R "$1" "$2"
+Rscript src/init.R "$1" "$2"
 
 # Set the directory containing the files
 directory="tmp/queue/$1/$2/"
@@ -42,7 +42,7 @@ cd "$directory" || exit 1
 task_function() {
   cd ../../../../
   # Run RScript with the current file as an argument
-  RScript tests/"$1"/main.R "$2" "$3"
+  Rscript tests/"$1"/main.R "$2" "$3"
   cd "$directory" || exit 1
 }
 
@@ -54,7 +54,7 @@ ls * | parallel -j "$PARALLEL_CORES" task_function "$1" "$2"
 
 ## Run time complexity analysis
 cd ../../../../
-RScript tests/"$1"/aggregate_results.R "$2"
+Rscript tests/"$1"/aggregate_results.R "$2"
 
 
 ###############################################################################

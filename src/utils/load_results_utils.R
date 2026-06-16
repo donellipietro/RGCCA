@@ -131,7 +131,7 @@ load_quantitative_results <- function(test_options, path_list) {
     cat(sprintf("Error in test %s - batch %d: %s\n", test_options$name_test, batch_index, conditionMessage(e)))
     FALSE
   })
-  if (!ok) next
+  if (!ok) stop("The first batch is not present!")
   
   ## Create containers for each entry in results_evaluation
   res <- list()

@@ -10,7 +10,7 @@ mu_strategy adaptive
 
 tol 1e-9
 
-acceptable_tol 1e-6
+acceptable_tol 1e-8
 acceptable_iter 10
 
 bound_push 1e-12

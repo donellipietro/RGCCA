@@ -65,7 +65,7 @@ test_options <- list(
     n_comp = n_comp,
     init = "Uniform",
     lambda_selection_weights = TRUE,
-    n_bootstrap_samples = 100,
+    n_bootstrap_samples = 5000,
     resampling_strategy = "Stationary",
     stationary_block_length = 0
   ),
@@ -95,7 +95,7 @@ data <- generate_data(test_options, seed = 0)
 # result <- CPP_RGCCA(model_name, data, test_options, path_list)
 
 IGNORE_CPP_OUTPUT <- FALSE
-model_name <- "CPP_fGCCA_cov"
+model_name <- "CPP_fGCCA_NN_cov"
 results <- CPP_RGCCA(model_name, data, test_options, path_list)
 
 
@@ -144,7 +144,6 @@ idx <- 1
 for(h in 1:n_comp) {
   lambda_opt <- results$results$bootstrap_selection[[h]]$lambda_opt
   index_lambda_opt <- which(lambda_opt == results$results$bootstrap_selection[[h]]$lambda_grid)
-  index_lambda_opt <- 1
   
   for(g in 1:4) {
     W_boot <- results$results$bootstrap_selection[[h]]$w_boot_grid[[index_lambda_opt]][[g]]

@@ -109,7 +109,7 @@ plots_catalog <- list(
 ## Open a pdf where to save the plots
 pdf(paste0(path_list$images, "time_complexity.pdf"), width = 15, height = 15)
 plot.aggregated_data(
-  loaded_results, data_plot, title_prefix, values_names,
+  loaded_results, data_plot, title_prefix, values_name,
   order = order, limits = limits, plots_catalog = plots_catalog
 )
 dev.off()
@@ -129,7 +129,7 @@ data_plot <- loaded_results$rmse$X
 # 
 # ## Plot aggregated results
 # plot.aggregated_data(
-#   loaded_results, data_plot, title_prefix, values_names,
+#   loaded_results, data_plot, title_prefix, values_name,
 #   order = order, limits = limits
 # )
 
@@ -150,7 +150,7 @@ for(g in 1:n_groups) {
   
   ## Plot aggregated results
   plot.aggregated_data(
-    loaded_results, data_plot, title_prefix, values_names,
+    loaded_results, data_plot, title_prefix, values_name,
     order = order, limits = limits
   )
   
@@ -162,7 +162,7 @@ for(g in 1:n_groups) {
   
   ## Plot aggregated results
   plot.aggregated_data(
-    loaded_results, data_plot, title_prefix, values_names,
+    loaded_results, data_plot, title_prefix, values_name,
     order = order, limits = limits
   )
   
@@ -180,7 +180,7 @@ for(g in 1:n_groups) {
 #   
 #   ## Plot aggregated results
 #   plot.aggregated_data(
-#     loaded_results, data_plot, title_prefix, values_names,
+#     loaded_results, data_plot, title_prefix, values_name,
 #     order = order, limits = limits
 #   )
 # }
@@ -196,7 +196,7 @@ for(g in 1:n_groups) {
 # 
 # ## Plot aggregated results
 # plot.aggregated_data(
-#   loaded_results, data_plot, title_prefix, values_names,
+#   loaded_results, data_plot, title_prefix, values_name,
 #   order = order, limits = limits
 # )
 # 
@@ -210,7 +210,7 @@ for(g in 1:n_groups) {
 # 
 # ## Plot aggregated results
 # plot.aggregated_data(
-#   loaded_results, data_plot, title_prefix, values_names,
+#   loaded_results, data_plot, title_prefix, values_name,
 #   order = order, limits = limits
 # )
 # 
@@ -232,7 +232,7 @@ for(g in 1:n_groups) {
 # 
 # ## Plot aggregated results
 # plot.aggregated_data(
-#   loaded_results, data_plot, title_prefix, values_names,
+#   loaded_results, data_plot, title_prefix, values_name,
 #   order = order, limits = limits
 # )
 # 

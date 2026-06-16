@@ -169,7 +169,7 @@ test_options <- list(
   regularization = list(
     lambda = 1e-4,
     lambda_grid = list(
-      10^(-9:-1), 10^(-9:-1), 10^(-9:-1)
+      10^(-12:3), 10^(-12:3), 10^(-12:3)
     )
   )
 )
@@ -189,6 +189,8 @@ test_options$model_options$n_comp <- n_comp
 test_options$model_options$lambda_selection_weights <- TRUE
 results <- fit_model("CPP_fGCCA_cov_FEM", data, path_list, test_options)
 
+
+pdf("bootstrap.pdf", width = 15, height = 10)
 
 par(mfrow = c(n_comp,1))
 
@@ -236,7 +238,7 @@ for(h in 1:n_comp) {
       # fit = w_fit,
       fit = w_fit_final,
       w_min = w_min,
-      true = data$A_grid[[g]][, h],
+      # true = data$A_grid[[g]][, h],
       conf_int = conf_int 
     ) + std_plot_settings_curves()
     idx <- idx +1
@@ -247,6 +249,49 @@ plot <- labled_plots_grid(plot, title = "Weights (optimal lambda)",
                           labels_cols = paste("Block", 1:4),
                           labels_rows = paste("Comp", 1:n_comp))
 grid.arrange(plot)
+
+
+for(index_lambda_opt in length(lambda_grid):1) {
+  plot_list <- list()
+  idx <- 1
+  B_vec <- rep(0, n_comp)
+  for(h in 1:n_comp) {
+    B_vec[h] <- ncol(results$results$bootstrap_selection[[h]]$w_boot_grid[[index_lambda_opt]][[1]])
+    for(g in 1:4) {
+      W_boot <- results$results$bootstrap_selection[[h]]$w_boot_grid[[index_lambda_opt]][[g]]
+      w_fit  <- results$results$bootstrap_selection[[h]]$w_fit_grid[[index_lambda_opt]][[g]]
+      w_min  <- results$results$bootstrap_selection[[h]]$w_min_grid[[index_lambda_opt]][[g]]
+      
+      w_fit_final <- results$results$A_hat_grid[[g]][, h]
+      
+      conf_int <- cbind(
+        apply(W_boot, 1, quantile, probs = 0.025),
+        apply(W_boot, 1, quantile, probs = 0.975)
+      )
+      
+      plot_list[[idx]] <- plot.curve_bootstrap(
+        data$grid_D,
+        W_boot,
+        fit = w_fit,
+        # fit = w_fit_final,
+        w_min = w_min,
+        true = data$A_grid[[g]][, h],
+        conf_int = conf_int 
+      ) + std_plot_settings_curves() + ylim(-0.35, 0.35)
+      idx <- idx +1
+    }
+  }
+  lambda <- results$results$bootstrap_selection[[h]]$lambda_grid[index_lambda_opt]
+  plot <- arrangeGrob(grobs = plot_list, nrow = n_comp)
+  plot <- labled_plots_grid(plot, title = glue("Weights (lambda = {lambda})"),
+                            labels_cols = paste("Block", 1:4),
+                            labels_rows = paste("Comp", 1:n_comp, ", B = ", B_vec))
+  grid.arrange(plot)
+}
+
+
+dev.off()
+
 
 
 # # Compute bootstrap confidence intervals for block correlations

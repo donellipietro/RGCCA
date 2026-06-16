@@ -9,7 +9,7 @@ start=$(date +%s.%N)
 ###############################################################################
 
 
-RScript src/init.R $1 $2
+Rscript src/init.R $1 $2
 
 # Set the directory containing the files
 directory="tmp/queue/$1/$2/"
@@ -29,14 +29,14 @@ for file in *; do
     if [ -f "$file" ]; then
         # Run RScript with the current file as an argument
         cd ../../../../
-        RScript tests/$1/main.R $2 "$file"
+        Rscript tests/$1/main.R $2 "$file"
         cd "$directory" || exit 1
     fi
 done
 
 ## Run time complexity analysis
 cd ../../../../
-RScript tests/$1/aggregate_results.R $2
+Rscript tests/$1/aggregate_results.R $2
 
 
 ###############################################################################

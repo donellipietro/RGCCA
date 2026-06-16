@@ -76,7 +76,7 @@ R_RGCCA <- function(model_name, data, test_options) {
     method      = "rgcca",
     scale_block = FALSE,
     scale       = FALSE,
-    bias        = TRUE, test_options$model_options$bias,
+    bias        = TRUE,
     connection  = C,
     init        = "svd",
     superblock  = FALSE,
@@ -105,11 +105,13 @@ R_RGCCA <- function(model_name, data, test_options) {
   library(clue)
   X_locs <- list()
   for(g in 1:n_groups) {
+    
     sim <- abs(var(data$A_locs[[g]][,1:n_comp], A_locs[[g]]))
     perm <- solve_LSAP(sim, maximum = TRUE)
-    A_locs[[g]] <- A_locs[[g]][, perm, drop = FALSE]
-    A_star_locs[[g]] <- A_star_locs[[g]][, perm, drop = FALSE]
+    A_locs[[g]] <- A_locs[[g]][, perm, drop = FALSE]  
+    A_star_locs[[g]] <- A_star_locs[[g]][, perm, drop = FALSE]  
     H[[g]] <- H[[g]][, perm, drop = FALSE]
+    
     for(h in 1:n_comp) {
       norm_H <- var(H[[g]][, h])
       norm_H <- if (is.na(norm_H) || norm_H == 0) 1 else sqrt(norm_H)
@@ -117,8 +119,11 @@ R_RGCCA <- function(model_name, data, test_options) {
       norm_A <- if (is.na(norm_A) || norm_A == 0) 1 else norm_A
       norm_A_star <- norm_l2(A_star_locs[[g]][, h])
       norm_A_star <- if (is.na(norm_A_star) || norm_A_star == 0) 1 else norm_A_star
+      
       sign <- sign(cov(A_locs[[g]][, h], data$A_locs[[g]][, h]))
+      if(sign == 0) sign <- sign(mean(A_locs[[g]][, h]))
       if(sign == 0) sign <- 1
+
       H[[g]][, h] <- sign * H[[g]][, h] / norm_H
       A_locs[[g]][, h] <- sign * A_locs[[g]][, h] / norm_A
       A_star_locs[[g]][, h] <- sign * A_star_locs[[g]][, h] / norm_A_star
@@ -397,8 +402,11 @@ CPP_RGCCA <- function(model_name, data, test_options, path_list) {
       norm_A <- if (is.na(norm_A) || norm_A == 0) 1 else norm_A
       norm_A_star <- norm_l2(A_star_locs[[g]][, h])
       norm_A_star <- if (is.na(norm_A_star) || norm_A_star == 0) 1 else norm_A_star
+      
       sign <- sign(cov(A_locs[[g]][, h], data$A_locs[[g]][, h]))
+      if(sign == 0) sign <- sign(mean(A_locs[[g]][, h]))
       if(sign == 0) sign <- 1
+      
       H[[g]][, h] <- sign * H[[g]][, h] / norm_H
       A_locs[[g]][, h] <- sign * A_locs[[g]][, h] / norm_A
       A_star_locs[[g]][, h] <- sign * A_star_locs[[g]][, h] / norm_A_star
