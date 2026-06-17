@@ -169,7 +169,7 @@ test_options <- list(
   regularization = list(
     lambda = 1e-4,
     lambda_grid = list(
-      10^(-9:-1), 10^(-9:-1), 10^(-9:-1)
+      10^(-9:-2), 10^(-9:-2), 10^(-9:-2)
     )
   )
 )
@@ -225,10 +225,7 @@ for(h in 1:n_comp) {
     
     w_fit_final <- results$results$A_hat_grid[[g]][, h]
     
-    conf_int <- cbind(
-      apply(W_boot, 1, quantile, probs = 0.025),
-      apply(W_boot, 1, quantile, probs = 0.975)
-    )
+    conf_int <- results$results$bootstrap_selection[[h]]$w_ci_grid[[index_lambda_opt]][[g]]
     
     plot_list[[idx]] <- plot.curve_bootstrap(
       data$grid_D,
@@ -236,7 +233,7 @@ for(h in 1:n_comp) {
       # fit = w_fit,
       fit = w_fit_final,
       w_min = w_min,
-      true = data$A_grid[[g]][, h],
+      # true = data$A_grid[[g]][, h],
       conf_int = conf_int 
     ) + std_plot_settings_curves()
     idx <- idx +1
@@ -249,153 +246,60 @@ plot <- labled_plots_grid(plot, title = "Weights (optimal lambda)",
 grid.arrange(plot)
 
 
-# # Compute bootstrap confidence intervals for block correlations
-# # using ORIGINAL data projected with bootstrap weights
-# 
-# compute_cor_ci <- function(results, data, conf.level = 0.95) {
-#   
-#   alpha <- 1 - conf.level
-#   n_comp <- length(results$results$bootstrap_selection)
-#   
-#   out <- vector("list", n_comp)
-#   
-#   for(h in 1:n_comp) {
-#     
-#     boot_obj <- results$results$bootstrap_selection[[h]]
-#     
-#     lambda_opt <- boot_obj$lambda_opt
-#     index_lambda_opt <- which(lambda_opt == boot_obj$lambda_grid)
-#     
-#     w_boot_list <- boot_obj$w_boot_locs[[index_lambda_opt]]
-#     w_fit_list  <- results$results$A_hat_locs
-#     
-#     J <- length(w_boot_list)
-#     B <- ncol(w_boot_list[[1]])
-#     
-#     cor_boot <- array(NA_real_, dim = c(J, J, B))
-#     cor_fit <- array(NA_real_, dim = c(J, J))
-#     cor_true <- array(NA_real_, dim = c(J, J))
-#     
-#     for(b in 1:B) {
-#       
-#       eta_boot <- vector("list", J)
-#       eta_fit <- vector("list", J)
-#       eta_true <- vector("list", J)
-#       
-#       for(j in 1:J) {
-#         
-#         # bootstrap weights
-#         w_bj <- w_boot_list[[j]][, b]
-#         w_fotj <- w_fit_list[[j]][,h]
-#         
-#         # align sign with fitted weights
-#         if(sum(w_bj * w_fit_list[[j]]) < 0)
-#           w_bj <- -w_bj
-#         
-#         # project ORIGINAL data
-#         eta_boot[[j]] <- as.vector(data$X[[j]] %*% w_bj)
-#         eta_fit[[j]] <- as.vector(data$X[[j]] %*% w_fotj)
-#         eta_true[[j]] <- as.vector(data$X_locs[[j]] %*% data$A_locs[[j]][,h])
-#       }
-#       
-#       for(j in 1:J) {
-#         for(k in 1:J) {
-#           r <- cor(eta_boot[[j]], eta_boot[[k]])
-#           cor_boot[j, k, b] <- atanh(r)
-#           
-#           cor_fit[j, k] <- cor(eta_fit[[j]], eta_fit[[k]])
-#           cor_fit[j, k] <- ifelse(is.na(cor_fit[j, k]), 0, cor_fit[j, k])
-#           
-#           cor_true[j, k] <- cor(eta_true[[j]], eta_true[[k]])
-#           cor_true[j, k] <- ifelse(is.na(cor_true[j, k]), 0, cor_true[j, k])
-#         }
-#       }
-#     }
-#     
-#     estimate_z <- apply(cor_boot, c(1,2), mean)
-#     
-#     lower_z <- apply(
-#       cor_boot,
-#       c(1,2),
-#       quantile,
-#       probs = alpha/2,
-#       na.rm = TRUE
-#     )
-#     
-#     upper_z <- apply(
-#       cor_boot,
-#       c(1,2),
-#       quantile,
-#       probs = 1 - alpha/2,
-#       na.rm = TRUE
-#     )
-#     
-#     out[[h]] <- list(
-#       estimate = cor_fit,
-#       lower = tanh(lower_z),
-#       upper = tanh(upper_z),
-#       true = cor_true
-#     )
-#   }
-#   
-#   out
-# }
-# 
-# 
-# cor_ci <- compute_cor_ci(results, data)
-# 
-# plot_list <- list()
-# idx <- 1
-# 
-# n_comp <- length(cor_ci)
-# 
-# for(h in 1:n_comp) {
-#   
-#   est <- cor_ci[[h]]$estimate
-#   low <- cor_ci[[h]]$lower
-#   upp <- cor_ci[[h]]$upper
-#   true <- cor_ci[[h]]$true
-#   
-#   mats <- list(true, low, est, upp)
-#   
-#   for(m in 1:4) {
-#     
-#     df <- expand.grid(
-#       x = 1:ncol(mats[[m]]),
-#       y = 1:nrow(mats[[m]])
-#     )
-#     
-#     df$value <- as.vector(mats[[m]])
-#     
-#     p <- ggplot(df, aes(x, y, fill = value)) +
-#       geom_tile() +
-#       geom_text(aes(label = round(value, 2)), size = 4) +
-#       scale_fill_gradient2(
-#         low = "blue", mid = "white", high = "red", midpoint = 0,
-#         limits = c(-1, 1),
-#         guide = "none"
-#       ) +
-#       scale_y_reverse() +
-#       coord_fixed() +
-#       labs(
-#         x = NULL,
-#         y = NULL
-#       ) +
-#       theme_minimal() +
-#       theme(
-#         axis.text = element_text(size = 10),
-#         panel.grid = element_blank(),
-#         plot.title = element_text(hjust = 0.5)
-#       )
-#     
-#     plot_list[[idx]] <- p
-#     idx <- idx + 1
-#   }
-# }
-# 
-# plot <- arrangeGrob(grobs = plot_list, ncol = 4)
-# plot <- labled_plots_grid(plot, title = "Correlation matrices CI",
-#                           labels_cols = c("True", "Lower", "Estimate", "Upper"),
-#                           labels_rows = paste("Comp", 1:3))
-# 
-# grid.arrange(plot)
+## CI for the corr matrix
+plot_list <- list()
+idx <- 1
+
+for(h in 1:n_comp) {
+  
+  lambda_opt <- results$results$bootstrap_selection[[h]]$lambda_opt
+  index_lambda_opt <- which(lambda_opt == results$results$bootstrap_selection[[h]]$lambda_grid)
+
+  est <- results$corr[[h]]
+  min <- results$results$bootstrap_selection[[h]]$corr_min[[index_lambda_opt]]
+  low <- results$results$bootstrap_selection[[h]]$corr_ci_low[[index_lambda_opt]]
+  upp <- results$results$bootstrap_selection[[h]]$corr_ci_high[[index_lambda_opt]]
+
+  mats <- list(low, est, upp, min)
+
+  for(m in 1:length(mats)) {
+
+    df <- expand.grid(
+      x = 1:ncol(mats[[m]]),
+      y = 1:nrow(mats[[m]])
+    )
+
+    df$value <- as.vector(mats[[m]])
+
+    p <- ggplot(df, aes(x, y, fill = value)) +
+      geom_tile() +
+      geom_text(aes(label = round(value, 2)), size = 4) +
+      scale_fill_gradient2(
+        low = "blue", mid = "white", high = "red", midpoint = 0,
+        limits = c(-1, 1),
+        guide = "none"
+      ) +
+      scale_y_reverse() +
+      coord_fixed() +
+      labs(
+        x = NULL,
+        y = NULL
+      ) +
+      theme_minimal() +
+      theme(
+        axis.text = element_text(size = 10),
+        panel.grid = element_blank(),
+        plot.title = element_text(hjust = 0.5)
+      )
+
+    plot_list[[idx]] <- p
+    idx <- idx + 1
+  }
+}
+
+plot <- arrangeGrob(grobs = plot_list, ncol = 4)
+plot <- labled_plots_grid(plot, title = "Correlation matrices CI",
+                          labels_cols = c("Lower", "Estimate", "Upper", "Corrected"), # c("True", "Lower", "Estimate", "Upper"),
+                          labels_rows = paste("Comp", 1:3))
+
+grid.arrange(plot)
