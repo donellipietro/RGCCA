@@ -59,25 +59,27 @@ generate_data <- function(test_options, seed = 0) {
   ## Canonical components
   rho <- 0.9
   set.seed(seed)
-  Sca <- diag(1, 12, 12)
-  Cor <- diag(1, 12, 12)
+  Sca <- diag(1, 16, 16)
+  Cor <- diag(1, 16, 16)
   Sca[1:4, 1:4] <- 1.5 * Sca[1:4, 1:4]
   Sca[5:8, 5:8] <- 1.2 * Sca[5:8, 5:8]
-  Sca[9:12, 9:12] <- 1 * Sca[9:12, 9:12]
+  Sca[9:12, 9:12] <- 1.0 * Sca[9:12, 9:12]
+  Sca[13:16, 13:16] <- 0 * Sca[13:16, 13:16]
   Cor[1, 3] <- Cor[3, 1] <- rho
   Cor[2, 4] <- Cor[4, 2] <- -rho
   Cor[4 + 1, 4 + 2] <- Cor[4 + 2, 4 + 1] <- -rho * 0.9
   Cor[4 + 3, 4 + 4] <- Cor[4 + 4, 4 + 3] <- rho * 0.9
   Cor[8 + 1, 8 + 4] <- Cor[8 + 4, 8 + 1] <- rho * 0.8
-  HH <- mvrnorm(n = n, mu = rep(0, 12), Sigma = Sca %*% Cor %*% Sca, empirical = TRUE)
+  HH <- mvrnorm(n = n, mu = rep(0, 16), Sigma = Sca %*% Cor %*% Sca, empirical = TRUE)
   HH[, 8 + 2] <- 0 * HH[, 8 + 2]
   HH[, 8 + 3] <- 0 * HH[, 8 + 3]
-  colnames(HH) <- c(paste0("H", 1, "g", 1:4), paste0("H", 2, "g", 1:4), paste0("H", 3, "g", 1:4))
+  HH[, 13:16] <- 0 * HH[, 13:16]
+  colnames(HH) <- c(paste0("H", 1, "g", 1:4), paste0("H", 2, "g", 1:4), paste0("H", 3, "g", 1:4), paste0("H", 4, "g", 1:4))
   # pairs(HH, xlim = c(-4, 4), ylim = c(-4, 4))
   H1 <- HH[, 1:4]
   H2 <- HH[, 5:8]
   H3 <- HH[, 9:12]
-  H4 <- 0 * HH[, 9:12]
+  H4 <- HH[, 13:16]
 
   ## Group 1
   A_locs[[1]] <- cbind(cbind(a_gen(locs_D, 1), a_gen(locs_D, 2), a_gen(locs_D, 3), a_gen(locs_D, 0))[, 1:n_comp])

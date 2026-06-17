@@ -105,6 +105,9 @@ int main(int argc, char *argv[]) {
   // Chose options
   RGCCA<IndependentSampling>::Options options;
   options.init_strategy = InitStrategy::Uniform;
+  options.block_deactivation = true;
+  options.connection_deactivation = true;
+  options.component_significance = true;
   
   if (lambda_selection_weights) {
     options.lambda_selection_weights = LambdaSelection::Automatic;
@@ -130,7 +133,7 @@ int main(int argc, char *argv[]) {
   RGCCA<IndependentSampling>::BootstrapConfig bootstrap_config;
   bootstrap_config.B_min = 60;
   bootstrap_config.B_max = n_bootstrap_samples;
-  bootstrap_config.patience = 10;
+  bootstrap_config.patience = 1;
   bootstrap_config.B_per_thread_per_batch = 5;
   bootstrap_config.stable_batches_required = 3;
   bootstrap_config.active_block_tol = 1e-3;
@@ -177,7 +180,6 @@ int main(int argc, char *argv[]) {
   const auto results = rgcca.fit();
   std::cout << results << std::endl;
   sparse_matrix_t Psi_grid = internals::point_basis_eval(Vh, grid_D);
-  ;
   
   // Save fitted results
   int id = 1;
