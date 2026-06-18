@@ -26,6 +26,39 @@ To run tests using the provided utilities, follow these steps::
 3. The script initializes the test environment, then iterates over the options files in the specified directory, executing the main test script (main.R) for each file found.
 4. After completing the tests, the script performs post-processing tasks, including runtime complexity analysis.
 
+Local tests can also be launched through `make`:
+
+```bash
+make run_test TEST_SUITE=RGCCA-2D TEST_NAME=testResampling
+make run_test_parallel TEST_SUITE=RGCCA-2D TEST_NAME=testResampling
+```
+
+On a Slurm cluster, submit one array task per generated JSON option file:
+
+```bash
+make run_test_slurm TEST_SUITE=RGCCA-2D TEST_NAME=testResampling
+```
+
+Useful Slurm options:
+
+```bash
+# Use the heavy resource class from config.R
+make run_test_slurm TEST_SUITE=RGCCA-2D TEST_NAME=testResampling SLURM_RESOURCES=heavy
+
+# Limit the number of simultaneously running array tasks
+make run_test_slurm TEST_SUITE=RGCCA-2D TEST_NAME=testResampling SLURM_ARRAY_LIMIT=20
+
+# Preview sbatch commands without submitting
+make run_test_slurm TEST_SUITE=RGCCA-2D TEST_NAME=testResampling SLURM_DRY_RUN=1
+
+# Compile C++ models before submission, using the selected profile/compiler setup
+make run_test_slurm TEST_SUITE=RGCCA-2D TEST_NAME=testResampling SLURM_COMPILE=1
+```
+
+The runners export `OMP_NUM_THREADS=1`, `OPENBLAS_NUM_THREADS=1`, and
+`VECLIB_MAXIMUM_THREADS=1` by default so each parallel test worker does not
+spawn additional BLAS/OpenMP threads unless explicitly overridden.
+
 ### Makefile
 
 The `Makefile` provided in this repository includes several targets to automate common tasks related to installation, testing, building, and cleaning up the project environment. Below is a brief description of each target:

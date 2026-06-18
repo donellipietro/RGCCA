@@ -17,6 +17,10 @@ set -a
 source "${PROJECT_DIR}/.env"
 set +a
 
+export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
+export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-1}"
+export VECLIB_MAXIMUM_THREADS="${VECLIB_MAXIMUM_THREADS:-1}"
+
 cd "${PATH_REPO}"
 
 # Define the number of high-performance cores

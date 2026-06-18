@@ -3,6 +3,21 @@
 SHELL := /bin/bash
 RSCRIPT ?= Rscript
 TESTBENCH_PROFILE ?= macbook
+SLURM_PROFILE ?= donders_hcp
+SLURM_RESOURCES ?= default
+SLURM_ARRAY_LIMIT ?=
+SLURM_COMPILE ?= 0
+SLURM_AGGREGATE ?= 1
+SLURM_DRY_RUN ?= 0
+SLURM_CPUS ?=
+SLURM_MEM ?=
+SLURM_TIME ?=
+SLURM_PARTITION ?=
+SLURM_ACCOUNT ?=
+SLURM_QOS ?=
+SLURM_AGG_CPUS ?=
+SLURM_AGG_MEM ?=
+SLURM_AGG_TIME ?=
 
 define config_value
 $(strip $(shell $(RSCRIPT) -e 'source("config.R"); cfg <- get_config("$(TESTBENCH_PROFILE)"); value <- cfg[["$(1)"]]; if (is.null(value)) value <- ""; cat(value)'))
@@ -53,7 +68,7 @@ endif
 .PHONY: help config write_env install install_femR build  \
         compile compile_all \
         clean_tmp clean_compiled clean clean_test distclean \
-        run_test run_test_parallel inspect_results
+        run_test run_test_parallel run_test_slurm inspect_results
 
 
 # Default target ----
@@ -221,6 +236,37 @@ run_test_parallel: build
 	else \
 		echo "Running: $(TEST_NAME) from suite $(TEST_SUITE)"; \
 		TESTBENCH_PROFILE="$(TESTBENCH_PROFILE)" ./run_tests_parallel.sh "$(TEST_SUITE)" "$(TEST_NAME)"; \
+	fi
+
+## Submit all batches of a test to Slurm as a job array
+# usage: make run_test_slurm TEST_SUITE=centering TEST_NAME=test1 SLURM_PROFILE=donders_hcp
+run_test_slurm:
+	@if [ -z "$(TEST_SUITE)" ] || [ -z "$(TEST_NAME)" ]; then \
+		echo "Usage: make run_test_slurm TEST_SUITE=<suite> TEST_NAME=<test_name> [SLURM_PROFILE=donders_hcp] [SLURM_RESOURCES=default|heavy]"; \
+		echo ""; \
+		echo "Available TEST_SUITEs:"; \
+		find tests -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort | \
+		sed 's/^\(.*\)/- \1 (make run_test_slurm TEST_SUITE=\1 TEST_NAME=<test_name>)/'; \
+		echo ""; \
+		exit 0; \
+	else \
+		echo "Submitting to Slurm: $(TEST_NAME) from suite $(TEST_SUITE)"; \
+		TESTBENCH_PROFILE="$(SLURM_PROFILE)" \
+		SLURM_RESOURCES="$(SLURM_RESOURCES)" \
+		SLURM_ARRAY_LIMIT="$(SLURM_ARRAY_LIMIT)" \
+		SLURM_COMPILE="$(SLURM_COMPILE)" \
+		SLURM_AGGREGATE="$(SLURM_AGGREGATE)" \
+		SLURM_DRY_RUN="$(SLURM_DRY_RUN)" \
+		SLURM_CPUS="$(SLURM_CPUS)" \
+		SLURM_MEM="$(SLURM_MEM)" \
+		SLURM_TIME="$(SLURM_TIME)" \
+		SLURM_PARTITION="$(SLURM_PARTITION)" \
+		SLURM_ACCOUNT="$(SLURM_ACCOUNT)" \
+		SLURM_QOS="$(SLURM_QOS)" \
+		SLURM_AGG_CPUS="$(SLURM_AGG_CPUS)" \
+		SLURM_AGG_MEM="$(SLURM_AGG_MEM)" \
+		SLURM_AGG_TIME="$(SLURM_AGG_TIME)" \
+		./run_tests_slurm.sh "$(TEST_SUITE)" "$(TEST_NAME)"; \
 	fi
 
 ## Inspect results of a specific test interactively
