@@ -66,7 +66,7 @@ endif
 
 
 # Targets ----
-.PHONY: help config write_env install install_femR build  \
+.PHONY: help config write_env install install_femR build create_dirs \
         ensure_env \
         compile compile_all \
         clean_tmp clean_compiled clean clean_test distclean \
@@ -74,7 +74,7 @@ endif
 
 
 # Default target ----
-all: install build
+all: build
 
 
 # Config targets ----
@@ -92,9 +92,9 @@ ensure_env:
 
 
 # Installation targets ----
-install_femR:
+install_femR: write_env create_dirs
 	@printf '\nInstalling femR...\n'
-	@$(RSCRIPT) src/installation/install_femR.R
+	@set -a; source .env; set +a; $(RSCRIPT) src/installation/install_femR.R
 # install_fdaPDE:
 # 	@printf '\nInstalling fdaPDE...\n'
 # 	@$(RSCRIPT) src/installation/install_fdaPDE.R
@@ -102,12 +102,14 @@ install:  install_femR
 	@printf '\nInstallation completed.\n'
 
 
-# Build target ----  
+# Build target ----
 # compile_all
-build: install write_env
+create_dirs:
 	@echo "Creating necessary directories..."
 	@mkdir -p "$(PATH_RESULTS)" "$(PATH_IMAGES)" "$(PATH_TEST_DATA)"
 	@mkdir -p "$(PATH_TMP)" "$(PATH_QUEUE)" "$(PATH_LOGS)" "$(PATH_TMP_DATA)" "$(PATH_TMP_RESULTS)" "$(PATH_BUILD)"
+
+build: write_env create_dirs install
 	@printf '\nBuild completed.\n\n'
 	
 ## Compile C++ model ----

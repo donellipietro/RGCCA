@@ -1,12 +1,39 @@
-## Install devtools if missing ---
-if (!("devtools" %in% installed.packages()[, "Package"])) {
-  install.packages("devtools")
+path_entries <- function(value) {
+  if (is.null(value) || !nzchar(value)) return(character())
+
+  entries <- unlist(strsplit(value, .Platform$path.sep, fixed = TRUE))
+  entries[nzchar(entries)]
 }
 
-## Check if femR is already installed and install it if not
-if ("femR" %in% installed.packages()[, "Package"]) {
-  # remove.packages("femR")
-  cat("The package femR is already installed")
-} else {
-  devtools::install_github("fdaPDE/femR", ref = "stable")
+r_cran_repo <- Sys.getenv("R_CRAN_REPO", unset = "https://cloud.r-project.org")
+options(repos = c(CRAN = r_cran_repo))
+
+user_libs <- path_entries(Sys.getenv("R_LIBS_USER", unset = ""))
+site_libs <- path_entries(Sys.getenv("R_LIBS_SITE", unset = ""))
+
+if (length(user_libs) > 0) {
+  dir.create(user_libs[1], recursive = TRUE, showWarnings = FALSE)
 }
+
+.libPaths(unique(c(user_libs, site_libs, .libPaths())))
+install_lib <- if (length(user_libs) > 0) user_libs[1] else .libPaths()[1]
+
+cat("R library paths:\n")
+print(.libPaths())
+cat("CRAN mirror:", getOption("repos")[["CRAN"]], "\n")
+
+if (requireNamespace("femR", quietly = TRUE)) {
+  cat("The package femR is already installed\n")
+  quit(save = "no", status = 0)
+}
+
+if (!requireNamespace("remotes", quietly = TRUE)) {
+  install.packages("remotes", lib = install_lib)
+}
+
+remotes::install_github(
+  "fdaPDE/femR",
+  ref = "stable",
+  lib = install_lib,
+  upgrade = "never"
+)
