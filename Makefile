@@ -1,23 +1,56 @@
 
 # Define commands ----
-RSCRIPT := Rscript
+SHELL := /bin/bash
+RSCRIPT ?= Rscript
+RGCCA_PROFILE ?= macbook
+
+define config_value
+$(strip $(shell $(RSCRIPT) -e 'source("config.R"); cfg <- get_config("$(RGCCA_PROFILE)"); value <- cfg[["$(1)"]]; if (is.null(value)) value <- ""; cat(value)'))
+endef
 
 
 # C++ compiler ----
-CC = /opt/homebrew/bin/gcc-15
-CXX = /opt/homebrew/bin/g++-15
-CXXFLAGS = -O3 -Wno-psabi -std=c++20 -march=native -DFDAPDE_ENABLE_COUT \
-  -I/Users/pietrodonelli/Documents/University/fdaPDE/fdaPDE-cpp \
-  -I/Users/pietrodonelli/Documents/University/fdaPDE/fdaPDE-cpp/fdaPDE/core \
-  -I/opt/homebrew/opt/ipopt/include/coin-or \
-  -I/opt/homebrew/include/eigen3
-LDFLAGS = -L/opt/homebrew/opt/ipopt/lib
-LDLIBS = -lipopt
+PATH_REPO := $(call config_value,PATH_REPO)
+PATH_CPP := $(call config_value,PATH_CPP)
+PATH_RESULTS := $(call config_value,PATH_RESULTS)
+PATH_IMAGES := $(call config_value,PATH_IMAGES)
+PATH_TEST_DATA := $(call config_value,PATH_TEST_DATA)
+PATH_TMP := $(call config_value,PATH_TMP)
+PATH_QUEUE := $(call config_value,PATH_QUEUE)
+PATH_LOGS := $(call config_value,PATH_LOGS)
+PATH_TMP_DATA := $(call config_value,PATH_TMP_DATA)
+PATH_TMP_RESULTS := $(call config_value,PATH_TMP_RESULTS)
+PATH_BUILD := $(call config_value,PATH_BUILD)
+
+CC = $(call config_value,CC)
+CXX = $(call config_value,CXX)
+PATH_FDAPDE_CPP := $(call config_value,PATH_FDAPDE_CPP)
+PATH_FDAPDE_CORE := $(call config_value,PATH_FDAPDE_CORE)
+PATH_IPOPT_INCLUDE := $(call config_value,PATH_IPOPT_INCLUDE)
+PATH_IPOPT_LIB := $(call config_value,PATH_IPOPT_LIB)
+PATH_EIGEN_INCLUDE := $(call config_value,PATH_EIGEN_INCLUDE)
+SINGULARITY_IMAGE := $(call config_value,SINGULARITY_IMAGE)
+SINGULARITY_BIND_PATHS := $(call config_value,SINGULARITY_BIND_PATHS)
+
+INCLUDE_DIRS := $(PATH_FDAPDE_CPP) $(PATH_FDAPDE_CORE) $(PATH_IPOPT_INCLUDE) $(PATH_EIGEN_INCLUDE)
+CXX_INCLUDES := $(foreach dir,$(INCLUDE_DIRS),$(if $(strip $(dir)),-I$(dir),))
+LIB_DIRS := $(PATH_IPOPT_LIB)
+LIBRARY_PATHS := $(foreach dir,$(LIB_DIRS),$(if $(strip $(dir)),-L$(dir),))
+
+CXXFLAGS ?= -O3 -Wno-psabi -std=c++20 -march=native -DFDAPDE_ENABLE_COUT $(CXX_INCLUDES)
+LDFLAGS ?= $(LIBRARY_PATHS)
+LDLIBS ?= -lipopt
+
+ifeq ($(strip $(SINGULARITY_IMAGE)),)
+RUNTIME_PREFIX :=
+else
+RUNTIME_PREFIX := singularity exec $(if $(strip $(SINGULARITY_BIND_PATHS)),--bind "$(SINGULARITY_BIND_PATHS)") "$(SINGULARITY_IMAGE)"
+endif
 
 
 
 # Targets ----
-.PHONY: help install install_femR build  \
+.PHONY: help config write_env install install_femR build  \
         complile compile_all \
         clean_options clean_compiled clean  distclean \
         run_test run_test_parallel inspect_results
@@ -25,6 +58,14 @@ LDLIBS = -lipopt
 
 # Default target ----
 all: install build
+
+
+# Config targets ----
+config:
+	@$(RSCRIPT) config.R --profile "$(RGCCA_PROFILE)" --print
+
+write_env:
+	@$(RSCRIPT) config.R --profile "$(RGCCA_PROFILE)" --write-env
 
 
 # Installation targets ----
@@ -42,20 +83,19 @@ install:  install_femR
 # compile_all
 build: install
 	@echo "Creating necessary directories..."
-	@mkdir -p results
-	@mkdir -p images
+	@mkdir -p "$(PATH_RESULTS)" "$(PATH_IMAGES)" "$(PATH_TEST_DATA)"
+	@mkdir -p "$(PATH_TMP)" "$(PATH_QUEUE)" "$(PATH_LOGS)" "$(PATH_TMP_DATA)" "$(PATH_TMP_RESULTS)" "$(PATH_BUILD)"
 	@echo "\nBuild completed.\n"
 	
 ## Compile C++ model ----
 
 # Discover models under cpp/, excluding 'include'
-MODELS := $(filter-out include,$(notdir $(wildcard cpp/*)))
-MODELS := $(filter-out $(filter-out %/,$(patsubst %/,%,$(foreach d,$(MODELS),$(if $(wildcard cpp/$(d)/.),$(d),)))), $(MODELS))
+MODELS := $(filter-out include,$(notdir $(wildcard $(PATH_CPP)/*)))
 
 ## Compile all models under cpp/
 compile_all:
-	@echo "\nCompiling all models in cpp/..."
-	@for model in $$(find cpp -mindepth 1 -maxdepth 1 -type d ! -name include -exec basename {} \; | sort); do \
+	@echo "\nCompiling all models in $(PATH_CPP)..."
+	@for model in $$(find "$(PATH_CPP)" -mindepth 1 -maxdepth 1 -type d ! -name include -exec basename {} \; | sort); do \
 		$(MAKE) --no-print-directory compile MODEL=$$model || exit $$?; \
 	done
 	@echo "All models compiled successfully.\n"
@@ -67,20 +107,20 @@ compile:
 		echo "\nUsage: make compile MODEL=<model_name>"; \
 		echo ""; \
 		echo "Available MODELS:"; \
-		find cpp -mindepth 1 -maxdepth 1 -type d ! -name include -exec basename {} \; | \
+		find "$(PATH_CPP)" -mindepth 1 -maxdepth 1 -type d ! -name include -exec basename {} \; | \
 		while read m; do \
-			ls "cpp/$$m"/main*.cpp >/dev/null 2>&1 && echo $$m; \
+			ls "$(PATH_CPP)/$$m"/main*.cpp >/dev/null 2>&1 && echo $$m; \
 		done | sort | sed 's/^\(.*\)/- \1 (make compile MODEL=\1)/'; \
 		echo ""; \
 		exit 0; \
-	elif [ ! -d "cpp/$(MODEL)" ]; then \
-		echo "\nError: model directory cpp/$(MODEL) not found."; \
+	elif [ ! -d "$(PATH_CPP)/$(MODEL)" ]; then \
+		echo "\nError: model directory $(PATH_CPP)/$(MODEL) not found."; \
 		exit 1; \
 	else \
 		echo "\nCompiling mains in cpp/$(MODEL) ..."; \
-		mains=$$(ls cpp/$(MODEL)/main*.cpp 2>/dev/null || true); \
+		mains=$$(ls "$(PATH_CPP)/$(MODEL)"/main*.cpp 2>/dev/null || true); \
 		if [ -z "$$mains" ]; then \
-			echo "No main*.cpp found in cpp/$(MODEL)"; \
+			echo "No main*.cpp found in $(PATH_CPP)/$(MODEL)"; \
 			exit 1; \
 		fi; \
 		for src in $$mains; do \
@@ -90,10 +130,10 @@ compile:
 				main_*.cpp) stem=$${base#main_}; stem=$${stem%.cpp}; bin="fit_model_$$stem" ;; \
 				*) continue ;; \
 			esac; \
-			out="cpp/$(MODEL)/$$bin"; \
+			out="$(PATH_CPP)/$(MODEL)/$$bin"; \
 			if [ ! -f "$$out" ] || [ "$$src" -nt "$$out" ]; then \
 				echo "- $$src  ==>  $$out"; \
-				$(CXX) -o "$$out" "$$src" $(CXXFLAGS) $(LDFLAGS) $(LDLIBS); \
+				$(RUNTIME_PREFIX) $(CXX) -o "$$out" "$$src" $(CXXFLAGS) $(LDFLAGS) $(LDLIBS); \
 			else \
 				echo "- $$out is up to date"; \
 			fi; \
@@ -105,11 +145,11 @@ compile:
 
 ## Clean temporary files
 clean_tmp:
-	@$(RM) -r tmp/
+	@$(RM) -r "$(PATH_TMP)"
 	
 ## Clean compiled binaries
 clean_compiled:
-	@$(RM) cpp/*/fit_model cpp/*/fit_model_*
+	@find "$(PATH_CPP)" -mindepth 2 -maxdepth 2 -type f \( -name 'fit_model' -o -name 'fit_model_*' \) -exec $(RM) {} +
 
 ## Clean temporary files, logs and R session files
 clean: clean_tmp
@@ -132,9 +172,9 @@ clean_test:
 		exit 0; \
 	else \
 		echo "Cleaning results and images for test: $(TEST_NAME) from suite: $(TEST_SUITE)"; \
-		$(RM) -r results/$(TEST_SUITE)/$(TEST_NAME); \
-		$(RM) -r images/$(TEST_SUITE)/$(TEST_NAME); \
-		$(RM) -r data/tests/$(TEST_SUITE)/$(TEST_NAME); \
+		$(RM) -r "$(PATH_RESULTS)/$(TEST_SUITE)/$(TEST_NAME)"; \
+		$(RM) -r "$(PATH_IMAGES)/$(TEST_SUITE)/$(TEST_NAME)"; \
+		$(RM) -r "$(PATH_TEST_DATA)/$(TEST_SUITE)/$(TEST_NAME)"; \
 		echo "Cleanup completed for test: $(TEST_NAME)"; \
 	fi
 	
@@ -143,9 +183,9 @@ distclean: clean clean_compiled
 	@echo "Attention! This will remove ALL the additional files and directories generated so far."
 	@read -p "Are you sure you want to continue? [y/n]: " confirm && [ "$$confirm" = "y" ] || (echo "Cleanup aborted." && false)
 	@echo "Removing additional generated files..."
-	@$(RM) -r images/
-	@$(RM) -r results/
-	@$(RM) -r data/tests/
+	@$(RM) -r "$(PATH_IMAGES)"
+	@$(RM) -r "$(PATH_RESULTS)"
+	@$(RM) -r "$(PATH_TEST_DATA)"
 	@echo "Additional cleanup completed.\n"
 
 # Test targets ----
@@ -163,7 +203,7 @@ run_test: build
 		exit 0; \
 	else \
 		echo "Running: $(TEST_NAME) from suite $(TEST_SUITE)"; \
-		./run_tests.sh "$(TEST_SUITE)" "$(TEST_NAME)"; \
+		RGCCA_PROFILE="$(RGCCA_PROFILE)" ./run_tests.sh "$(TEST_SUITE)" "$(TEST_NAME)"; \
 	fi
 	
 ## Run all the batches of a test in parallel
@@ -179,7 +219,7 @@ run_test_parallel: build
 		exit 0; \
 	else \
 		echo "Running: $(TEST_NAME) from suite $(TEST_SUITE)"; \
-		./run_tests_parallel.sh "$(TEST_SUITE)" "$(TEST_NAME)"; \
+		RGCCA_PROFILE="$(RGCCA_PROFILE)" ./run_tests_parallel.sh "$(TEST_SUITE)" "$(TEST_NAME)"; \
 	fi
 
 ## Inspect results of a specific test interactively
@@ -196,10 +236,10 @@ inspect_results:
 		echo ""; \
 		exit 0; \
 	else \
-		queue_directory="tmp/queue/$(TEST_SUITE)/$(TEST_NAME)"; \
-		RScript src/init.R $(TEST_SUITE) $(TEST_NAME) \
+		queue_directory="$(PATH_QUEUE)/$(TEST_SUITE)/$(TEST_NAME)"; \
+		RGCCA_PROFILE="$(RGCCA_PROFILE)" $(RSCRIPT) src/init.R "$(TEST_SUITE)" "$(TEST_NAME)"; \
 		echo "Available files in $$queue_directory:"; \
-		files=($$(ls -1 $$queue_directory 2>/dev/null)); \
+		files=($$(ls -1 "$$queue_directory" 2>/dev/null)); \
 		if [ $${#files[@]} -eq 0 ]; then \
 			echo "No files found in $$queue_directory."; \
 			exit 1; \
@@ -213,8 +253,8 @@ inspect_results:
 		if [ $$choice -ge 1 ] && [ $$choice -le $$count ]; then \
 			selected=$${files[$$((choice-1))]}; \
 			echo "Running RScript with selected file: $$selected"; \
-			Rscript "src/init.R" "$(TEST_SUITE)" "$(TEST_NAME)"; \
-			Rscript "tests/$(TEST_SUITE)/inspect_results.R" "$(TEST_NAME)" "$$selected"; \
+			RGCCA_PROFILE="$(RGCCA_PROFILE)" $(RSCRIPT) "src/init.R" "$(TEST_SUITE)" "$(TEST_NAME)"; \
+			RGCCA_PROFILE="$(RGCCA_PROFILE)" $(RSCRIPT) "tests/$(TEST_SUITE)/inspect_results.R" "$(TEST_NAME)" "$$selected"; \
 		else \
 			echo "Invalid choice!"; \
 			exit 1; \
