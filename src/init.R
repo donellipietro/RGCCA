@@ -37,10 +37,11 @@ cat("\n")
 # Generate options ----
 
 ## Update directories according to the selected test
-mkdir(c("tmp/", "tmp/queue/"))
-path_queue <- paste0("tmp/queue/", test_suite, "/")
+cfg <- rgcca_get_config()
+mkdir(c(cfg$PATH_TMP, cfg$PATH_QUEUE))
+path_queue <- rgcca_path(cfg$PATH_QUEUE, test_suite)
 mkdir(path_queue)
-path_queue <- paste0(path_queue, name_main_test, "/")
+path_queue <- rgcca_path(path_queue, name_main_test)
 mkdir(path_queue)
 
 ## Load the option-generation function

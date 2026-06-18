@@ -1,18 +1,30 @@
 #!/bin/bash
+set -euo pipefail
 
 # $1: test suite name
 # $2: test name
 
 start=$(date +%s.%N)
 
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROFILE="${RGCCA_PROFILE:-macbook}"
+
+cd "${PROJECT_DIR}"
+Rscript config.R --profile "${PROFILE}" --write-env --env-file "${PROJECT_DIR}/.env"
+
+set -a
+source "${PROJECT_DIR}/.env"
+set +a
+
+cd "${PATH_REPO}"
 
 ###############################################################################
 
 
-Rscript src/init.R $1 $2
+Rscript src/init.R "$1" "$2"
 
 # Set the directory containing the files
-directory="tmp/queue/$1/$2/"
+directory="${PATH_QUEUE}/$1/$2/"
 
 # Check if the directory exists
 if [ ! -d "$directory" ]; then
@@ -28,15 +40,15 @@ for file in *; do
     # Check if the item is a file
     if [ -f "$file" ]; then
         # Run RScript with the current file as an argument
-        cd ../../../../
-        Rscript tests/$1/main.R $2 "$file"
+        cd "${PATH_REPO}"
+        Rscript tests/"$1"/main.R "$2" "$file"
         cd "$directory" || exit 1
     fi
 done
 
 ## Run time complexity analysis
-cd ../../../../
-Rscript tests/$1/aggregate_results.R $2
+cd "${PATH_REPO}"
+Rscript tests/"$1"/aggregate_results.R "$2"
 
 
 ###############################################################################

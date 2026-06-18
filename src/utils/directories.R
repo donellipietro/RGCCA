@@ -14,9 +14,32 @@
 mkdir <- function(paths) {
   for (path in paths) {
     if (!file.exists(path)) {
-      dir.create(path)
+      dir.create(path, recursive = TRUE, showWarnings = FALSE)
     }
   }
+}
+
+
+## Function: rgcca_get_config
+# - Desc:
+#   Loads the root configuration file if needed and returns the selected profile.
+rgcca_get_config <- function() {
+  if (!exists("get_config", mode = "function")) {
+    source("config.R")
+  }
+
+  get_config()
+}
+
+
+## Function: rgcca_path
+# - Desc:
+#   Joins path components and keeps the trailing slash expected by older code.
+rgcca_path <- function(...) {
+  path <- file.path(...)
+  needs_slash <- !grepl("[/\\\\]$", path)
+  path[needs_slash] <- paste0(path[needs_slash], .Platform$file.sep)
+  path
 }
 
 
@@ -28,23 +51,33 @@ mkdir <- function(paths) {
 #   queues, logs, and C++ data/mesh paths. Returns a named list
 #   containing all created paths for downstream use.
 create_paths <- function(test_suite) {
+  cfg <- rgcca_get_config()
+
   ## Directories for results
-  mkdir(c("results", "images", "data/tests"))
-  path_results <- paste("results/", test_suite, "/", sep = "")
-  path_images <- paste("images/", test_suite, "/", sep = "")
-  path_data <- paste("data/tests/", test_suite, "/", sep = "")
+  mkdir(c(cfg$PATH_RESULTS, cfg$PATH_IMAGES, cfg$PATH_TEST_DATA))
+  path_results <- rgcca_path(cfg$PATH_RESULTS, test_suite)
+  path_images <- rgcca_path(cfg$PATH_IMAGES, test_suite)
+  path_data <- rgcca_path(cfg$PATH_TEST_DATA, test_suite)
   mkdir(c(path_results, path_images, path_data))
 
   ## Temporary directories
-  mkdir(c("tmp/", "tmp/queue/", "tmp/logs/", "tmp/data/", "tmp/results/"))
-  path_queue <- paste("tmp/queue/", test_suite, "/", sep = "")
-  path_logs <- paste("tmp/logs/", test_suite, "/", sep = "")
-  path_tmp_data <- paste("tmp/data/", test_suite, "/", sep = "")
-  path_tmp_results <- paste("tmp/results/", test_suite, "/", sep = "")
+  mkdir(c(
+    cfg$PATH_TMP,
+    cfg$PATH_QUEUE,
+    cfg$PATH_LOGS,
+    cfg$PATH_TMP_DATA,
+    cfg$PATH_TMP_RESULTS
+  ))
+  path_queue <- rgcca_path(cfg$PATH_QUEUE, test_suite)
+  path_logs <- rgcca_path(cfg$PATH_LOGS, test_suite)
+  path_tmp_data <- rgcca_path(cfg$PATH_TMP_DATA, test_suite)
+  path_tmp_results <- rgcca_path(cfg$PATH_TMP_RESULTS, test_suite)
   mkdir(c(path_queue, path_logs, path_tmp_data, path_tmp_results))
 
   ## Save all paths needed by the methods in a list
   path_list <- list(
+    repo = rgcca_path(cfg$PATH_REPO),
+    cpp = rgcca_path(cfg$PATH_CPP),
     results = path_results,
     images = path_images,
     data = path_data,
@@ -70,22 +103,22 @@ create_paths <- function(test_suite) {
 update_paths <- function(path_list, name_main_test, test_options) {
   for (ext in c("images", "data")) {
     path <- path_list[[ext]]
-    path <- paste(path, name_main_test, "/", sep = "")
+    path <- rgcca_path(path, name_main_test)
     mkdir(path)
     path_list[[ext]] <- path
   }
 
   for (ext in c("results", "tmp_data", "tmp_results")) {
     path <- path_list[[ext]]
-    path <- paste(path, name_main_test, "/", sep = "")
+    path <- rgcca_path(path, name_main_test)
     mkdir(path)
-    path <- paste(path, test_options$name_test, "/", sep = "")
+    path <- rgcca_path(path, test_options$name_test)
     mkdir(path)
     path_list[[ext]] <- path
   }
 
   ## Add cpp_scripts path to path_list
-  path_list$cpp_script <- paste0("cpp/", test_options$cpp_script, "/")
+  path_list$cpp_script <- rgcca_path(path_list$cpp, test_options$cpp_script)
 
   ## Check if the C++ has been compiled
   ## Check if the C++ has been compiled
@@ -98,7 +131,7 @@ update_paths <- function(path_list, name_main_test, test_options) {
     stop(
       paste0(
         "The C++ model has not been compiled!\n",
-        "Run: make compile MODEL=", basename(path_list$cpp_script)
+        "Run: make compile MODEL=", test_options$cpp_script
       )
     )
   }

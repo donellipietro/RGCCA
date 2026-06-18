@@ -14,6 +14,13 @@ using matrix_t = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>;
 using vector_t = Eigen::Matrix<double, Eigen::Dynamic, 1>;
 using sparse_matrix_t = Eigen::SparseMatrix<double>;
 
+std::string resolve_path(const std::string& path) {
+  if (std::filesystem::path(path).is_absolute()) {
+    return path;
+  }
+  return "../../" + path;
+}
+
 int main(int argc, char* argv[]) {
   
   // Check for argument
@@ -36,9 +43,9 @@ int main(int argc, char* argv[]) {
   std::filesystem::remove(params_path);
   
   // Extract paths
-  std::string path_mesh = "../../" + jroot["path_list"].value("mesh", "./mesh/");
-  std::string path_data = "../../" + jroot["path_list"].value("data", "./data/");
-  std::string path_results = "../../" + jroot["path_list"].value("results", "./results/");
+  std::string path_mesh = resolve_path(jroot["path_list"].value("mesh", "./mesh/"));
+  std::string path_data = resolve_path(jroot["path_list"].value("data", "./data/"));
+  std::string path_results = resolve_path(jroot["path_list"].value("results", "./results/"));
   
   int n_obs = jroot["options"].value("n_obs", 101);
   int n_comp = jroot["options"].value("n_comp", 3);
