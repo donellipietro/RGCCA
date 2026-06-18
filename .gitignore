@@ -5,6 +5,7 @@
 *.pdf
 *.Rproj
 *.csv
+.env
 
 # directories to ignore
 results/
