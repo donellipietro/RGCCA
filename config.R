@@ -46,9 +46,11 @@ TESTBENCH_CONFIG_PROFILES <- list(
     )
   }),
   donders_hcp = local({
-    PATH_REPO <- "/home/preclineu/piedon/Documents/RGCCA"
+    PATH_HOME <- "/home/preclineu/piedon"
+    PATH_REPO <- file.path(PATH_HOME, "Documents/RGCCA")
     PATH_OUTPUT <- "/project/3022000.05/piedon/RGCCA"
     PATH_TMP <- file.path(PATH_OUTPUT, "tmp")
+    PATH_FDAPDE_CPP <- file.path(PATH_HOME, "fdaPDE-cpp")
 
     list(
       PATH_REPO = PATH_REPO,
@@ -68,14 +70,14 @@ TESTBENCH_CONFIG_PROFILES <- list(
       # these should be the paths inside the container.
       CC = "gcc",
       CXX = "g++",
-      PATH_FDAPDE_CPP = "",
-      PATH_FDAPDE_CORE = "",
-      PATH_IPOPT_INCLUDE = "",
-      PATH_IPOPT_LIB = "",
-      PATH_EIGEN_INCLUDE = "",
+      PATH_FDAPDE_CPP = PATH_FDAPDE_CPP,
+      PATH_FDAPDE_CORE = file.path(PATH_FDAPDE_CPP, "fdaPDE/core"),
+      PATH_IPOPT_INCLUDE = "/usr/include/coin-or/",
+      PATH_IPOPT_LIB = "usr/lib/ipopt",
+      PATH_EIGEN_INCLUDE = "/usr/include/eigen3",
 
       # If SINGULARITY_IMAGE is filled, compile through Singularity.
-      SINGULARITY_IMAGE = "",
+      SINGULARITY_IMAGE = file.path(PATH_HOME, "fdapde-docker_ipopt.sif"),
       SINGULARITY_BIND_PATHS = paste(c(PATH_REPO, PATH_TMP), collapse = ","),
       DEFAULT_CPUS = 1,
       HEAVY_CPUS = 20,
