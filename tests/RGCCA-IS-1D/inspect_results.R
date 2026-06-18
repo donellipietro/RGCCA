@@ -49,15 +49,18 @@ source("src/utils/domain_utils.R")
 source("src/utils/error_metrics.R")
 source("src/utils/plotting_utils.R")
 source("src/utils/load_results_utils.R")
-source("src/data-generation/function_generators_1D.R")
-source("src/data-generation/function_generators_2D.R")
+
+source_if_exists <- function(path) {
+  if (file.exists(path)) source(path)
+}
+source_if_exists("src/data-generation/function_generators_1D.R")
+source_if_exists("src/data-generation/function_generators_2D.R")
 
 ## Load configuration file
 path_this <- get_script_path()
 source(paste0(path_this, "config.R"))
 
 ## Load test-specific functions
-source("src/wrappers/fPCA.R")
 source(paste0("tests/", test_suite, "/utils/plot_results.R"))
 source(paste0("tests/", test_suite, "/utils/load_qualitative_results.R"))
 

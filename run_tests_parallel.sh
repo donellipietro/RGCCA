@@ -8,10 +8,12 @@ set -euo pipefail
 start=$(date +%s.%N)
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROFILE="${TESTBENCH_PROFILE:-macbook}"
 
 cd "${PROJECT_DIR}"
-Rscript config.R --profile "${PROFILE}" --write-env --env-file "${PROJECT_DIR}/.env"
+if [[ ! -f "${PROJECT_DIR}/.env" ]]; then
+  echo "Error: .env not found. Run: make build TESTBENCH_PROFILE=<profile>"
+  exit 1
+fi
 
 set -a
 source "${PROJECT_DIR}/.env"
@@ -60,21 +62,14 @@ fi
 
 # Change to the specified directory
 cd "$directory" || exit 1
-export directory
-
-# Define your task function
-task_function() {
-  cd "${PATH_REPO}"
-  # Run RScript with the current file as an argument
-  Rscript tests/"$1"/main.R "$2" "$3"
-  cd "$directory" || exit 1
-}
-
-# Export the task function so that it can be used by GNU Parallel
-export -f task_function
+export PATH_REPO
+export TEST_SUITE="$1"
+export TEST_NAME="$2"
 
 # Run tasks in parallel using GNU Parallel
-ls * | parallel -j "$PARALLEL_CORES" task_function "$1" "$2"
+find . -maxdepth 1 -type f -name '*.json' -exec basename {} \; | sort | \
+  parallel -j "$PARALLEL_CORES" --halt soon,fail=1 \
+    'cd "$PATH_REPO" && Rscript tests/"$TEST_SUITE"/main.R "$TEST_NAME" {}'
 
 ## Run time complexity analysis
 cd "${PATH_REPO}"

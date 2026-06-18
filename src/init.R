@@ -34,6 +34,20 @@ cat(paste("Test suite:", test_suite, "\n"))
 cat(paste("Test name:", name_main_test, "\n"))
 cat("\n")
 
+path_test_suite <- file.path("tests", test_suite)
+path_generate_options <- file.path(path_test_suite, "utils", "generate_options.R")
+if (!dir.exists(path_test_suite) || !file.exists(path_generate_options)) {
+  available_suites <- basename(list.dirs("tests", recursive = FALSE, full.names = TRUE))
+  stop(
+    paste0(
+      "Unknown or incomplete test suite: ", test_suite, "\n",
+      "Expected option generator: ", path_generate_options, "\n",
+      "Available test suites: ", paste(sort(available_suites), collapse = ", ")
+    ),
+    call. = FALSE
+  )
+}
+
 # Generate options ----
 
 ## Update directories according to the selected test
@@ -45,7 +59,7 @@ path_queue <- config_path(path_queue, name_main_test)
 mkdir(path_queue)
 
 ## Load the option-generation function
-source(paste("tests/", test_suite, "/utils/generate_options.R", sep = ""))
+source(path_generate_options)
 
 ## Generate all the options for the selected test
 generate_options(test_suite, name_main_test, path_queue)

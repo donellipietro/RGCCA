@@ -33,6 +33,16 @@ make run_test TEST_SUITE=RGCCA-2D TEST_NAME=testResampling
 make run_test_parallel TEST_SUITE=RGCCA-2D TEST_NAME=testResampling
 ```
 
+The active profile is stored in `.env`. To switch machine/profile, rebuild once:
+
+```bash
+make build TESTBENCH_PROFILE=macbook
+make build TESTBENCH_PROFILE=donders_hcp
+```
+
+After that, regular `make` targets reuse the profile from `.env`.
+`make clean` preserves `.env`; `make distclean` removes it.
+
 On a Slurm cluster, submit one array task per generated JSON option file:
 
 ```bash

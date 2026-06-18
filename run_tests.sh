@@ -7,10 +7,12 @@ set -euo pipefail
 start=$(date +%s.%N)
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROFILE="${TESTBENCH_PROFILE:-macbook}"
 
 cd "${PROJECT_DIR}"
-Rscript config.R --profile "${PROFILE}" --write-env --env-file "${PROJECT_DIR}/.env"
+if [[ ! -f "${PROJECT_DIR}/.env" ]]; then
+  echo "Error: .env not found. Run: make build TESTBENCH_PROFILE=<profile>"
+  exit 1
+fi
 
 set -a
 source "${PROJECT_DIR}/.env"

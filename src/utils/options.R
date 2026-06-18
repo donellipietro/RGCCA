@@ -137,6 +137,7 @@ explode_options <- function(options, by, formatters = NULL, name_fun = NULL) {
 write_options_json <- function(options_list, dir, name_field = "name_test",
                                pretty = TRUE, auto_unbox = TRUE) {
   dir.create(dir, showWarnings = FALSE, recursive = TRUE)
+  unlink(list.files(dir, pattern = "\\.json$", full.names = TRUE))
   for (opt in options_list) {
     nm <- opt[[name_field]]
     if (is.null(nm)) stop("Missing 'name_field' in one options element.")

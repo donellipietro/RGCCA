@@ -14,7 +14,7 @@ load_qualitative_results <- function(test_options, data, path_list) {
   nodes_D <- data$domain_D$knots
   locations_D <- data$locations_D
   grid_D <- data$grid_D
-  nodes_T <- data$domain_T$knots
+  nodes_T <- if (!is.null(data$domain_T)) data$domain_T$knots else NULL
   locations_T <- data$locations_T
   grid_T <- data$grid_T
   

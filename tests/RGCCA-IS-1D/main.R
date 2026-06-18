@@ -173,11 +173,20 @@ if (RUN$tests) {
     
     ## File names where the results should be found
     file_model_vect <- paste0(path_list$batch, "batch_", batch_idx, "_fitted_model_", test_options$model_names, ".RData")
+    file_results_evaluation <- paste0(path_list$batch, "batch_", batch_idx, "_results_evaluation.RData")
+    needs_evaluation <- TRUE
+    if (file.exists(file_results_evaluation)) {
+      eval_env <- new.env(parent = emptyenv())
+      load(file_results_evaluation, envir = eval_env)
+      if (exists("results_evaluation", envir = eval_env, inherits = FALSE)) {
+        needs_evaluation <- !all(test_options$model_names %in% names(eval_env$results_evaluation))
+      }
+    }
     
     test_options$batch_index <- batch_idx
     
     ## Generate data only if necessary (no fit found of fit is forced)
-    if (any(!file.exists(file_model_vect)) || FORCE_FIT || FORCE_EVALUATE) {
+    if (any(!file.exists(file_model_vect)) || FORCE_FIT || FORCE_EVALUATE || needs_evaluation) {
       data <- generate_data(
         test_options = test_options,
         seed = 4 * batch_idx

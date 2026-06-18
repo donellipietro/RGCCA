@@ -2,8 +2,9 @@
 # Define commands ----
 SHELL := /bin/bash
 RSCRIPT ?= Rscript
-TESTBENCH_PROFILE ?= macbook
-SLURM_PROFILE ?= donders_hcp
+
+ACTIVE_ENV_PROFILE := $(strip $(shell if [ -f .env ]; then set -a; . ./.env >/dev/null 2>&1; printf '%s' "$$TESTBENCH_PROFILE"; fi))
+TESTBENCH_PROFILE ?= $(if $(ACTIVE_ENV_PROFILE),$(ACTIVE_ENV_PROFILE),macbook)
 SLURM_RESOURCES ?= default
 SLURM_ARRAY_LIMIT ?=
 SLURM_COMPILE ?= 0
@@ -66,6 +67,7 @@ endif
 
 # Targets ----
 .PHONY: help config write_env install install_femR build  \
+        ensure_env \
         compile compile_all \
         clean_tmp clean_compiled clean clean_test distclean \
         run_test run_test_parallel run_test_slurm inspect_results
@@ -81,6 +83,12 @@ config:
 
 write_env:
 	@$(RSCRIPT) config.R --profile "$(TESTBENCH_PROFILE)" --write-env
+
+ensure_env:
+	@if [ ! -f .env ]; then \
+		echo "Error: .env not found. Run: make build TESTBENCH_PROFILE=<profile>"; \
+		exit 1; \
+	fi
 
 
 # Installation targets ----
@@ -172,7 +180,6 @@ clean: clean_tmp
 	@$(RM) *.aux *.log *.pdf *.txt *.json
 	@$(RM) .Rhistory
 	@$(RM) .RData
-	@$(RM) .env
 	@printf 'Cleanup completed.\n\n'
 	
 ## Clean results and images of a specific test
@@ -202,13 +209,14 @@ distclean: clean clean_compiled
 	@$(RM) -r "$(PATH_IMAGES)"
 	@$(RM) -r "$(PATH_RESULTS)"
 	@$(RM) -r "$(PATH_TEST_DATA)"
+	@$(RM) .env
 	@printf 'Additional cleanup completed.\n\n'
 
 # Test targets ----
 
 ## Run all the batches of a test sequentially
 # usage: make run_test TEST_SUITE=centering TEST_NAME=test1
-run_test: build
+run_test: ensure_env
 	@if [ -z "$(TEST_SUITE)" ] || [ -z "$(TEST_NAME)" ]; then \
 		echo "Usage: make run_test TEST_SUITE=<suite> TEST_NAME=<test_name>"; \
 		echo ""; \
@@ -219,12 +227,12 @@ run_test: build
 		exit 0; \
 	else \
 		echo "Running: $(TEST_NAME) from suite $(TEST_SUITE)"; \
-		TESTBENCH_PROFILE="$(TESTBENCH_PROFILE)" ./run_tests.sh "$(TEST_SUITE)" "$(TEST_NAME)"; \
+		./run_tests.sh "$(TEST_SUITE)" "$(TEST_NAME)"; \
 	fi
 	
 ## Run all the batches of a test in parallel
 # usage: make run_test_parallel TEST_SUITE=centering TEST_NAME=test1
-run_test_parallel: build
+run_test_parallel: ensure_env
 	@if [ -z "$(TEST_SUITE)" ] || [ -z "$(TEST_NAME)" ]; then \
 		echo "Usage: make run_test_parallel TEST_SUITE=<suite> TEST_NAME=<test_name>"; \
 		echo ""; \
@@ -235,14 +243,14 @@ run_test_parallel: build
 		exit 0; \
 	else \
 		echo "Running: $(TEST_NAME) from suite $(TEST_SUITE)"; \
-		TESTBENCH_PROFILE="$(TESTBENCH_PROFILE)" ./run_tests_parallel.sh "$(TEST_SUITE)" "$(TEST_NAME)"; \
+		./run_tests_parallel.sh "$(TEST_SUITE)" "$(TEST_NAME)"; \
 	fi
 
 ## Submit all batches of a test to Slurm as a job array
-# usage: make run_test_slurm TEST_SUITE=centering TEST_NAME=test1 SLURM_PROFILE=donders_hcp
+# usage: make run_test_slurm TEST_SUITE=centering TEST_NAME=test1
 run_test_slurm:
 	@if [ -z "$(TEST_SUITE)" ] || [ -z "$(TEST_NAME)" ]; then \
-		echo "Usage: make run_test_slurm TEST_SUITE=<suite> TEST_NAME=<test_name> [SLURM_PROFILE=donders_hcp] [SLURM_RESOURCES=default|heavy]"; \
+		echo "Usage: make run_test_slurm TEST_SUITE=<suite> TEST_NAME=<test_name> [SLURM_RESOURCES=default|heavy]"; \
 		echo ""; \
 		echo "Available TEST_SUITEs:"; \
 		find tests -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort | \
@@ -251,7 +259,6 @@ run_test_slurm:
 		exit 0; \
 	else \
 		echo "Submitting to Slurm: $(TEST_NAME) from suite $(TEST_SUITE)"; \
-		TESTBENCH_PROFILE="$(SLURM_PROFILE)" \
 		SLURM_RESOURCES="$(SLURM_RESOURCES)" \
 		SLURM_ARRAY_LIMIT="$(SLURM_ARRAY_LIMIT)" \
 		SLURM_COMPILE="$(SLURM_COMPILE)" \
@@ -273,7 +280,7 @@ run_test_slurm:
 # Usage: make inspect_results TEST_SUITE=<suite> TEST_NAME=<test_name>
 # Lists available result files in tmp/queue/<suite>/<test>, lets you select one,
 # and runs the corresponding R scripts to visualize or analyze it.
-inspect_results: write_env
+inspect_results: ensure_env
 	@if [ -z "$(TEST_SUITE)" ] || [ -z "$(TEST_NAME)" ]; then \
 		printf '\nUsage: make inspect_results TEST_SUITE=<suite> TEST_NAME=<test_name>\n'; \
 		echo ""; \
@@ -283,8 +290,10 @@ inspect_results: write_env
 		echo ""; \
 		exit 0; \
 	else \
-		queue_directory="$(PATH_QUEUE)/$(TEST_SUITE)/$(TEST_NAME)"; \
-		TESTBENCH_PROFILE="$(TESTBENCH_PROFILE)" $(RSCRIPT) src/init.R "$(TEST_SUITE)" "$(TEST_NAME)"; \
+		set -e; \
+		set -a; source .env; set +a; \
+		queue_directory="$${PATH_QUEUE}/$(TEST_SUITE)/$(TEST_NAME)"; \
+		$(RSCRIPT) src/init.R "$(TEST_SUITE)" "$(TEST_NAME)"; \
 		echo "Available files in $$queue_directory:"; \
 		files=($$(ls -1 "$$queue_directory" 2>/dev/null)); \
 		if [ $${#files[@]} -eq 0 ]; then \
@@ -300,8 +309,7 @@ inspect_results: write_env
 		if [ $$choice -ge 1 ] && [ $$choice -le $$count ]; then \
 			selected=$${files[$$((choice-1))]}; \
 			echo "Running RScript with selected file: $$selected"; \
-			TESTBENCH_PROFILE="$(TESTBENCH_PROFILE)" $(RSCRIPT) "src/init.R" "$(TEST_SUITE)" "$(TEST_NAME)"; \
-			TESTBENCH_PROFILE="$(TESTBENCH_PROFILE)" $(RSCRIPT) "tests/$(TEST_SUITE)/inspect_results.R" "$(TEST_NAME)" "$$selected"; \
+			$(RSCRIPT) "tests/$(TEST_SUITE)/inspect_results.R" "$(TEST_NAME)" "$$selected"; \
 		else \
 			echo "Invalid choice!"; \
 			exit 1; \

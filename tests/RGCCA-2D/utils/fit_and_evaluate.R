@@ -31,7 +31,11 @@ fit_and_evaluate_models <- function(path_list,
   # Load results if available ----
   ## Reload previously saved evaluation results (if present)
   if (file.exists(paste0(path_batch, "batch_", batch_index, "_results_evaluation.RData"))) {
-    load(paste0(path_batch, "batch_", batch_index, "_results_evaluation.RData"))
+    eval_env <- new.env(parent = emptyenv())
+    load(paste0(path_batch, "batch_", batch_index, "_results_evaluation.RData"), envir = eval_env)
+    if (exists("results_evaluation", envir = eval_env, inherits = FALSE)) {
+      results_evaluation <- eval_env$results_evaluation
+    }
   }
   
   
@@ -46,9 +50,15 @@ fit_and_evaluate_models <- function(path_list,
     
     ## Fit the model only if necessary (no fit found or fit is forced)
     if (file.exists(file_model) && !FORCE_FIT) {
-      if (FORCE_EVALUATE) {
+      if (FORCE_EVALUATE || is.null(results_evaluation[[model_name]])) {
         cat("- Loading fitted model:", model_name, "... \n")
-        load(file_model)
+        model_env <- new.env(parent = emptyenv())
+        loaded_names <- load(file_model, envir = model_env)
+        model_object_name <- paste0("model_", model_name)
+        if (!model_object_name %in% loaded_names) {
+          stop(paste("Could not find", model_object_name, "in", file_model))
+        }
+        model <- get(model_object_name, envir = model_env)
       }
     } else {
       cat("- Fitting model:", model_name, "... ")

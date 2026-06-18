@@ -64,6 +64,11 @@ add_results <- function(data, new, groups_names = NULL) {
 }
 
 
+is_nested_result_metric <- function(value) {
+  is.list(value) && !is.null(names(value)) && length(names(value)) > 0
+}
+
+
 ## Function: extract_new_results
 # - Args:
 #   * results_evaluation: nested list containing results per model
@@ -90,6 +95,10 @@ extract_new_results <- function(results_evaluation, names_models, name_result) {
     if (length(new_results[[name_model]]) == 1 &&
         "units" %in% names(attributes(new_results[[name_model]]))) {
       new_results[[name_model]] <- format_time(new_results[[name_model]])
+    }
+    ## Non-tabular list outputs cannot be safely represented in this loader.
+    if (is.list(new_results[[name_model]])) {
+      new_results[[name_model]] <- c(NaN)
     }
     ## Replace NULL with NaN
     if (is.null(new_results[[name_model]])) {
@@ -136,7 +145,7 @@ load_quantitative_results <- function(test_options, path_list) {
   ## Create containers for each entry in results_evaluation
   res <- list()
   for (entry in names(results_evaluation[[1]])) {
-    if (!is.list(results_evaluation[[1]][[entry]])) {
+    if (!is_nested_result_metric(results_evaluation[[1]][[entry]])) {
       res[[entry]] <- empty_df
     } else {
       res[[entry]] <- list()
