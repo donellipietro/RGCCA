@@ -143,6 +143,22 @@ compile:
 		exit 1; \
 	else \
 		printf '\nCompiling mains in cpp/$(MODEL) ...\n'; \
+		if [ -n "$(SINGULARITY_IMAGE)" ]; then \
+			echo "Runtime: Singularity"; \
+			echo "Image: $(SINGULARITY_IMAGE)"; \
+			echo "Bind paths: $(SINGULARITY_BIND_PATHS)"; \
+			if ! command -v singularity >/dev/null 2>&1; then \
+				echo "Error: SINGULARITY_IMAGE is set, but singularity is not available in PATH."; \
+				exit 1; \
+			fi; \
+			if [ ! -f "$(SINGULARITY_IMAGE)" ]; then \
+				echo "Error: Singularity image not found: $(SINGULARITY_IMAGE)"; \
+				exit 1; \
+			fi; \
+		else \
+			echo "Runtime: host"; \
+		fi; \
+		echo "Compiler: $(CXX)"; \
 		mains=$$(ls "$(PATH_CPP)/$(MODEL)"/main*.cpp 2>/dev/null || true); \
 		if [ -z "$$mains" ]; then \
 			echo "No main*.cpp found in $(PATH_CPP)/$(MODEL)"; \

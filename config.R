@@ -73,12 +73,15 @@ TESTBENCH_CONFIG_PROFILES <- list(
       PATH_FDAPDE_CPP = PATH_FDAPDE_CPP,
       PATH_FDAPDE_CORE = file.path(PATH_FDAPDE_CPP, "fdaPDE/core"),
       PATH_IPOPT_INCLUDE = "/usr/include/coin-or/",
-      PATH_IPOPT_LIB = "usr/lib/ipopt",
+      PATH_IPOPT_LIB = "/usr/lib/ipopt",
       PATH_EIGEN_INCLUDE = "/usr/include/eigen3",
 
       # If SINGULARITY_IMAGE is filled, compile through Singularity.
       SINGULARITY_IMAGE = file.path(PATH_HOME, "fdapde-docker_ipopt.sif"),
-      SINGULARITY_BIND_PATHS = paste(c(PATH_REPO, PATH_TMP), collapse = ","),
+      SINGULARITY_BIND_PATHS = paste(
+        unique(c(PATH_REPO, PATH_OUTPUT, PATH_FDAPDE_CPP)),
+        collapse = ","
+      ),
       DEFAULT_CPUS = 1,
       HEAVY_CPUS = 20,
       DEFAULT_MEM = "16GB",
