@@ -51,8 +51,8 @@ endif
 
 # Targets ----
 .PHONY: help config write_env install install_femR build  \
-        complile compile_all \
-        clean_options clean_compiled clean  distclean \
+        compile compile_all \
+        clean_tmp clean_compiled clean clean_test distclean \
         run_test run_test_parallel inspect_results
 
 
@@ -70,22 +70,22 @@ write_env:
 
 # Installation targets ----
 install_femR:
-	@echo "\nInstalling femR..."
+	@printf '\nInstalling femR...\n'
 	@$(RSCRIPT) src/installation/install_femR.R
 # install_fdaPDE:
-# 	@echo "\nInstalling fdaPDE..."
+# 	@printf '\nInstalling fdaPDE...\n'
 # 	@$(RSCRIPT) src/installation/install_fdaPDE.R
 install:  install_femR 
-	@echo "\nInstallation completed."
+	@printf '\nInstallation completed.\n'
 
 
 # Build target ----  
 # compile_all
-build: install
+build: install write_env
 	@echo "Creating necessary directories..."
 	@mkdir -p "$(PATH_RESULTS)" "$(PATH_IMAGES)" "$(PATH_TEST_DATA)"
 	@mkdir -p "$(PATH_TMP)" "$(PATH_QUEUE)" "$(PATH_LOGS)" "$(PATH_TMP_DATA)" "$(PATH_TMP_RESULTS)" "$(PATH_BUILD)"
-	@echo "\nBuild completed.\n"
+	@printf '\nBuild completed.\n\n'
 	
 ## Compile C++ model ----
 
@@ -94,17 +94,17 @@ MODELS := $(filter-out include,$(notdir $(wildcard $(PATH_CPP)/*)))
 
 ## Compile all models under cpp/
 compile_all:
-	@echo "\nCompiling all models in $(PATH_CPP)..."
+	@printf '\nCompiling all models in $(PATH_CPP)...\n'
 	@for model in $$(find "$(PATH_CPP)" -mindepth 1 -maxdepth 1 -type d ! -name include -exec basename {} \; | sort); do \
 		$(MAKE) --no-print-directory compile MODEL=$$model || exit $$?; \
 	done
-	@echo "All models compiled successfully.\n"
+	@printf 'All models compiled successfully.\n\n'
 
 ## Compile all mains found in cpp/$(MODEL)
 # Usage: make compile MODEL=my_model
 compile:
 	@if [ -z "$(MODEL)" ]; then \
-		echo "\nUsage: make compile MODEL=<model_name>"; \
+		printf '\nUsage: make compile MODEL=<model_name>\n'; \
 		echo ""; \
 		echo "Available MODELS:"; \
 		find "$(PATH_CPP)" -mindepth 1 -maxdepth 1 -type d ! -name include -exec basename {} \; | \
@@ -114,10 +114,10 @@ compile:
 		echo ""; \
 		exit 0; \
 	elif [ ! -d "$(PATH_CPP)/$(MODEL)" ]; then \
-		echo "\nError: model directory $(PATH_CPP)/$(MODEL) not found."; \
+		printf '\nError: model directory $(PATH_CPP)/$(MODEL) not found.\n'; \
 		exit 1; \
 	else \
-		echo "\nCompiling mains in cpp/$(MODEL) ..."; \
+		printf '\nCompiling mains in cpp/$(MODEL) ...\n'; \
 		mains=$$(ls "$(PATH_CPP)/$(MODEL)"/main*.cpp 2>/dev/null || true); \
 		if [ -z "$$mains" ]; then \
 			echo "No main*.cpp found in $(PATH_CPP)/$(MODEL)"; \
@@ -138,7 +138,7 @@ compile:
 				echo "- $$out is up to date"; \
 			fi; \
 		done; \
-		echo "All the source files have been compiled!\n"; \
+		printf 'All the source files have been compiled!\n\n'; \
 	fi
 
 # Clean targets ----
@@ -153,12 +153,12 @@ clean_compiled:
 
 ## Clean temporary files, logs and R session files
 clean: clean_tmp
-	@echo "\nCleaning temporary files..."
+	@printf '\nCleaning temporary files...\n'
 	@$(RM) *.aux *.log *.pdf *.txt *.json
 	@$(RM) .Rhistory
 	@$(RM) .RData
 	@$(RM) .env
-	@echo "Cleanup completed.\n"
+	@printf 'Cleanup completed.\n\n'
 	
 ## Clean results and images of a specific test
 # - usage: make clean_test TEST_SUITE=centering TEST_NAME=test1
@@ -187,7 +187,7 @@ distclean: clean clean_compiled
 	@$(RM) -r "$(PATH_IMAGES)"
 	@$(RM) -r "$(PATH_RESULTS)"
 	@$(RM) -r "$(PATH_TEST_DATA)"
-	@echo "Additional cleanup completed.\n"
+	@printf 'Additional cleanup completed.\n\n'
 
 # Test targets ----
 
@@ -227,9 +227,9 @@ run_test_parallel: build
 # Usage: make inspect_results TEST_SUITE=<suite> TEST_NAME=<test_name>
 # Lists available result files in tmp/queue/<suite>/<test>, lets you select one,
 # and runs the corresponding R scripts to visualize or analyze it.
-inspect_results:
+inspect_results: write_env
 	@if [ -z "$(TEST_SUITE)" ] || [ -z "$(TEST_NAME)" ]; then \
-		echo "\nUsage: make inspect_results TEST_SUITE=<suite> TEST_NAME=<test_name>"; \
+		printf '\nUsage: make inspect_results TEST_SUITE=<suite> TEST_NAME=<test_name>\n'; \
 		echo ""; \
 		echo "Available TEST_SUITEs:"; \
 		find tests -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort | \
@@ -269,7 +269,7 @@ inspect_results:
 # Pretty printing for help (tweak width/color as you like)
 HELP_FMT ?= \033[36m- %-24s\033[0m %s\n
 help:
-	@echo "\nAvailable targets:"
+	@printf '\nAvailable targets:\n'
 	@awk -v fmt="$(HELP_FMT)" '\
 /^[a-zA-Z0-9_.-]+:.*##/ { \
   line=$$0; \
