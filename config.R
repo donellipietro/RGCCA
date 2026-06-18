@@ -8,7 +8,7 @@ source("src/utils/config.R")
 
 # Profiles ----
 
-RGCCA_CONFIG_PROFILES <- list(
+TESTBENCH_CONFIG_PROFILES <- list(
   macbook = local({
     PATH_REPO <- "/Users/pietrodonelli/Documents/University/projects/RGCCA"
     PATH_TMP <- file.path(PATH_REPO, "tmp")
@@ -91,6 +91,6 @@ RGCCA_CONFIG_PROFILES <- list(
 
 # Command line entry point ----
 
-if (rgcca_config_is_cli("config.R")) {
-  rgcca_config_main()
+if (config_is_cli("config.R")) {
+  config_main()
 }

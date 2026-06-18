@@ -2,10 +2,10 @@
 # Define commands ----
 SHELL := /bin/bash
 RSCRIPT ?= Rscript
-RGCCA_PROFILE ?= macbook
+TESTBENCH_PROFILE ?= macbook
 
 define config_value
-$(strip $(shell $(RSCRIPT) -e 'source("config.R"); cfg <- get_config("$(RGCCA_PROFILE)"); value <- cfg[["$(1)"]]; if (is.null(value)) value <- ""; cat(value)'))
+$(strip $(shell $(RSCRIPT) -e 'source("config.R"); cfg <- get_config("$(TESTBENCH_PROFILE)"); value <- cfg[["$(1)"]]; if (is.null(value)) value <- ""; cat(value)'))
 endef
 
 
@@ -62,10 +62,10 @@ all: install build
 
 # Config targets ----
 config:
-	@$(RSCRIPT) config.R --profile "$(RGCCA_PROFILE)" --print
+	@$(RSCRIPT) config.R --profile "$(TESTBENCH_PROFILE)" --print
 
 write_env:
-	@$(RSCRIPT) config.R --profile "$(RGCCA_PROFILE)" --write-env
+	@$(RSCRIPT) config.R --profile "$(TESTBENCH_PROFILE)" --write-env
 
 
 # Installation targets ----
@@ -157,6 +157,7 @@ clean: clean_tmp
 	@$(RM) *.aux *.log *.pdf *.txt *.json
 	@$(RM) .Rhistory
 	@$(RM) .RData
+	@$(RM) .env
 	@echo "Cleanup completed.\n"
 	
 ## Clean results and images of a specific test
@@ -203,7 +204,7 @@ run_test: build
 		exit 0; \
 	else \
 		echo "Running: $(TEST_NAME) from suite $(TEST_SUITE)"; \
-		RGCCA_PROFILE="$(RGCCA_PROFILE)" ./run_tests.sh "$(TEST_SUITE)" "$(TEST_NAME)"; \
+		TESTBENCH_PROFILE="$(TESTBENCH_PROFILE)" ./run_tests.sh "$(TEST_SUITE)" "$(TEST_NAME)"; \
 	fi
 	
 ## Run all the batches of a test in parallel
@@ -219,7 +220,7 @@ run_test_parallel: build
 		exit 0; \
 	else \
 		echo "Running: $(TEST_NAME) from suite $(TEST_SUITE)"; \
-		RGCCA_PROFILE="$(RGCCA_PROFILE)" ./run_tests_parallel.sh "$(TEST_SUITE)" "$(TEST_NAME)"; \
+		TESTBENCH_PROFILE="$(TESTBENCH_PROFILE)" ./run_tests_parallel.sh "$(TEST_SUITE)" "$(TEST_NAME)"; \
 	fi
 
 ## Inspect results of a specific test interactively
@@ -237,7 +238,7 @@ inspect_results:
 		exit 0; \
 	else \
 		queue_directory="$(PATH_QUEUE)/$(TEST_SUITE)/$(TEST_NAME)"; \
-		RGCCA_PROFILE="$(RGCCA_PROFILE)" $(RSCRIPT) src/init.R "$(TEST_SUITE)" "$(TEST_NAME)"; \
+		TESTBENCH_PROFILE="$(TESTBENCH_PROFILE)" $(RSCRIPT) src/init.R "$(TEST_SUITE)" "$(TEST_NAME)"; \
 		echo "Available files in $$queue_directory:"; \
 		files=($$(ls -1 "$$queue_directory" 2>/dev/null)); \
 		if [ $${#files[@]} -eq 0 ]; then \
@@ -253,8 +254,8 @@ inspect_results:
 		if [ $$choice -ge 1 ] && [ $$choice -le $$count ]; then \
 			selected=$${files[$$((choice-1))]}; \
 			echo "Running RScript with selected file: $$selected"; \
-			RGCCA_PROFILE="$(RGCCA_PROFILE)" $(RSCRIPT) "src/init.R" "$(TEST_SUITE)" "$(TEST_NAME)"; \
-			RGCCA_PROFILE="$(RGCCA_PROFILE)" $(RSCRIPT) "tests/$(TEST_SUITE)/inspect_results.R" "$(TEST_NAME)" "$$selected"; \
+			TESTBENCH_PROFILE="$(TESTBENCH_PROFILE)" $(RSCRIPT) "src/init.R" "$(TEST_SUITE)" "$(TEST_NAME)"; \
+			TESTBENCH_PROFILE="$(TESTBENCH_PROFILE)" $(RSCRIPT) "tests/$(TEST_SUITE)/inspect_results.R" "$(TEST_NAME)" "$$selected"; \
 		else \
 			echo "Invalid choice!"; \
 			exit 1; \

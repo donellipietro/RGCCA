@@ -6,7 +6,7 @@
 
 # Helpers ----
 
-rgcca_first_non_empty <- function(...) {
+first_non_empty <- function(...) {
   values <- list(...)
   for (value in values) {
     if (!is.null(value) && length(value) > 0 && !is.na(value[1]) &&
@@ -17,44 +17,44 @@ rgcca_first_non_empty <- function(...) {
   ""
 }
 
-rgcca_env <- function(name, default = "") {
-  rgcca_first_non_empty(Sys.getenv(paste0("RGCCA_", name), unset = ""), default)
+config_env <- function(name, default = "") {
+  first_non_empty(Sys.getenv(paste0("TESTBENCH_", name), unset = ""), default)
 }
 
-rgcca_cfg_value <- function(cfg, name, default = "") {
+config_value <- function(cfg, name, default = "") {
   value <- if (!is.null(cfg[[name]])) cfg[[name]] else default
-  rgcca_env(name, value)
+  config_env(name, value)
 }
 
-rgcca_as_scalar_character <- function(value) {
+as_scalar_character <- function(value) {
   if (is.null(value) || length(value) == 0) return("")
   paste(as.character(value), collapse = ",")
 }
 
-rgcca_add_derived_paths <- function(cfg) {
-  cfg$PATH_REPO <- rgcca_cfg_value(cfg, "PATH_REPO")
-  cfg$PATH_TMP <- rgcca_cfg_value(cfg, "PATH_TMP", file.path(cfg$PATH_REPO, "tmp"))
+add_derived_paths <- function(cfg) {
+  cfg$PATH_REPO <- config_value(cfg, "PATH_REPO")
+  cfg$PATH_TMP <- config_value(cfg, "PATH_TMP", file.path(cfg$PATH_REPO, "tmp"))
 
-  cfg$PATH_SRC <- rgcca_cfg_value(cfg, "PATH_SRC", file.path(cfg$PATH_REPO, "src"))
-  cfg$PATH_TESTS <- rgcca_cfg_value(cfg, "PATH_TESTS", file.path(cfg$PATH_REPO, "tests"))
-  cfg$PATH_CPP <- rgcca_cfg_value(cfg, "PATH_CPP", file.path(cfg$PATH_REPO, "cpp"))
-  cfg$PATH_DATA <- rgcca_cfg_value(cfg, "PATH_DATA", file.path(cfg$PATH_REPO, "data"))
+  cfg$PATH_SRC <- config_value(cfg, "PATH_SRC", file.path(cfg$PATH_REPO, "src"))
+  cfg$PATH_TESTS <- config_value(cfg, "PATH_TESTS", file.path(cfg$PATH_REPO, "tests"))
+  cfg$PATH_CPP <- config_value(cfg, "PATH_CPP", file.path(cfg$PATH_REPO, "cpp"))
+  cfg$PATH_DATA <- config_value(cfg, "PATH_DATA", file.path(cfg$PATH_REPO, "data"))
 
-  cfg$PATH_RESULTS <- rgcca_cfg_value(cfg, "PATH_RESULTS", file.path(cfg$PATH_REPO, "results"))
-  cfg$PATH_IMAGES <- rgcca_cfg_value(cfg, "PATH_IMAGES", file.path(cfg$PATH_REPO, "images"))
-  cfg$PATH_TEST_DATA <- rgcca_cfg_value(cfg, "PATH_TEST_DATA", file.path(cfg$PATH_REPO, "data/tests"))
-  cfg$PATH_QUEUE <- rgcca_cfg_value(cfg, "PATH_QUEUE", file.path(cfg$PATH_TMP, "queue"))
-  cfg$PATH_LOGS <- rgcca_cfg_value(cfg, "PATH_LOGS", file.path(cfg$PATH_TMP, "logs"))
-  cfg$PATH_TMP_DATA <- rgcca_cfg_value(cfg, "PATH_TMP_DATA", file.path(cfg$PATH_TMP, "data"))
-  cfg$PATH_TMP_RESULTS <- rgcca_cfg_value(cfg, "PATH_TMP_RESULTS", file.path(cfg$PATH_TMP, "results"))
-  cfg$PATH_BUILD <- rgcca_cfg_value(cfg, "PATH_BUILD", file.path(cfg$PATH_REPO, "build"))
+  cfg$PATH_RESULTS <- config_value(cfg, "PATH_RESULTS", file.path(cfg$PATH_REPO, "results"))
+  cfg$PATH_IMAGES <- config_value(cfg, "PATH_IMAGES", file.path(cfg$PATH_REPO, "images"))
+  cfg$PATH_TEST_DATA <- config_value(cfg, "PATH_TEST_DATA", file.path(cfg$PATH_REPO, "data/tests"))
+  cfg$PATH_QUEUE <- config_value(cfg, "PATH_QUEUE", file.path(cfg$PATH_TMP, "queue"))
+  cfg$PATH_LOGS <- config_value(cfg, "PATH_LOGS", file.path(cfg$PATH_TMP, "logs"))
+  cfg$PATH_TMP_DATA <- config_value(cfg, "PATH_TMP_DATA", file.path(cfg$PATH_TMP, "data"))
+  cfg$PATH_TMP_RESULTS <- config_value(cfg, "PATH_TMP_RESULTS", file.path(cfg$PATH_TMP, "results"))
+  cfg$PATH_BUILD <- config_value(cfg, "PATH_BUILD", file.path(cfg$PATH_REPO, "build"))
 
   cfg
 }
 
-rgcca_apply_overrides <- function(cfg) {
+apply_overrides <- function(cfg) {
   for (name in names(cfg)) {
-    cfg[[name]] <- rgcca_env(name, cfg[[name]])
+    cfg[[name]] <- config_env(name, cfg[[name]])
   }
   cfg
 }
@@ -63,25 +63,25 @@ rgcca_apply_overrides <- function(cfg) {
 # Public API ----
 
 available_profiles <- function() {
-  if (!exists("RGCCA_CONFIG_PROFILES", envir = .GlobalEnv)) {
+  if (!exists("TESTBENCH_CONFIG_PROFILES", envir = .GlobalEnv)) {
     return(character())
   }
 
-  names(get("RGCCA_CONFIG_PROFILES", envir = .GlobalEnv))
+  names(get("TESTBENCH_CONFIG_PROFILES", envir = .GlobalEnv))
 }
 
-get_config <- function(profile = Sys.getenv("RGCCA_PROFILE", "macbook")) {
-  profile <- rgcca_first_non_empty(profile, "macbook")
+get_config <- function(profile = Sys.getenv("TESTBENCH_PROFILE", "macbook")) {
+  profile <- first_non_empty(profile, "macbook")
 
-  if (!exists("RGCCA_CONFIG_PROFILES", envir = .GlobalEnv)) {
-    stop("RGCCA_CONFIG_PROFILES is not defined. Source config.R first.", call. = FALSE)
+  if (!exists("TESTBENCH_CONFIG_PROFILES", envir = .GlobalEnv)) {
+    stop("TESTBENCH_CONFIG_PROFILES is not defined. Source config.R first.", call. = FALSE)
   }
 
-  profiles <- get("RGCCA_CONFIG_PROFILES", envir = .GlobalEnv)
+  profiles <- get("TESTBENCH_CONFIG_PROFILES", envir = .GlobalEnv)
   if (!profile %in% names(profiles)) {
     stop(
       paste0(
-        "Unknown RGCCA profile: ", profile, "\n",
+        "Unknown testbench profile: ", profile, "\n",
         "Available profiles: ", paste(names(profiles), collapse = ", ")
       ),
       call. = FALSE
@@ -89,9 +89,9 @@ get_config <- function(profile = Sys.getenv("RGCCA_PROFILE", "macbook")) {
   }
 
   cfg <- profiles[[profile]]
-  cfg$RGCCA_PROFILE <- profile
-  cfg <- rgcca_add_derived_paths(cfg)
-  cfg <- rgcca_apply_overrides(cfg)
+  cfg$TESTBENCH_PROFILE <- profile
+  cfg <- add_derived_paths(cfg)
+  cfg <- apply_overrides(cfg)
 
   cfg
 }
@@ -99,14 +99,14 @@ get_config <- function(profile = Sys.getenv("RGCCA_PROFILE", "macbook")) {
 print_config <- function(cfg = get_config()) {
   width <- max(nchar(names(cfg)))
   for (name in names(cfg)) {
-    cat(sprintf("%-*s = %s\n", width, name, rgcca_as_scalar_character(cfg[[name]])))
+    cat(sprintf("%-*s = %s\n", width, name, as_scalar_character(cfg[[name]])))
   }
   invisible(cfg)
 }
 
 write_env <- function(cfg = get_config(),
                       env_file = file.path(cfg$PATH_REPO, ".env")) {
-  env_values <- vapply(cfg, rgcca_as_scalar_character, character(1))
+  env_values <- vapply(cfg, as_scalar_character, character(1))
   env_lines <- paste(names(env_values), shQuote(env_values, type = "sh"), sep = "=")
 
   dir.create(dirname(env_file), recursive = TRUE, showWarnings = FALSE)
@@ -118,7 +118,7 @@ write_env <- function(cfg = get_config(),
 
 # CLI ----
 
-rgcca_config_usage <- function() {
+config_usage <- function() {
   cat(
     "Usage:\n",
     "  Rscript config.R --profile <profile> --print\n",
@@ -131,9 +131,9 @@ rgcca_config_usage <- function() {
   )
 }
 
-rgcca_parse_config_cli <- function(args) {
+parse_config_cli <- function(args) {
   out <- list(
-    profile = Sys.getenv("RGCCA_PROFILE", "macbook"),
+    profile = Sys.getenv("TESTBENCH_PROFILE", "macbook"),
     print = FALSE,
     write_env = FALSE,
     env_file = NULL,
@@ -172,7 +172,7 @@ rgcca_parse_config_cli <- function(args) {
   out
 }
 
-rgcca_config_is_cli <- function(config_file = "config.R") {
+config_is_cli <- function(config_file = "config.R") {
   file_arg <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
   if (length(file_arg) == 0) return(FALSE)
 
@@ -182,18 +182,18 @@ rgcca_config_is_cli <- function(config_file = "config.R") {
   identical(cli_file, expected_file)
 }
 
-rgcca_config_main <- function() {
-  args <- rgcca_parse_config_cli(commandArgs(trailingOnly = TRUE))
+config_main <- function() {
+  args <- parse_config_cli(commandArgs(trailingOnly = TRUE))
 
   if (args$help) {
-    rgcca_config_usage()
+    config_usage()
     return(invisible(NULL))
   }
 
   cfg <- get_config(args$profile)
 
   if (!args$print && !args$write_env) {
-    rgcca_config_usage()
+    config_usage()
     return(invisible(NULL))
   }
 
@@ -202,7 +202,7 @@ rgcca_config_main <- function() {
   }
 
   if (args$write_env) {
-    env_file <- rgcca_first_non_empty(args$env_file, file.path(cfg$PATH_REPO, ".env"))
+    env_file <- first_non_empty(args$env_file, file.path(cfg$PATH_REPO, ".env"))
     write_env(cfg, env_file)
     cat("Wrote environment file:", env_file, "\n")
   }

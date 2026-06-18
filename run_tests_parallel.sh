@@ -8,7 +8,7 @@ set -euo pipefail
 start=$(date +%s.%N)
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROFILE="${RGCCA_PROFILE:-macbook}"
+PROFILE="${TESTBENCH_PROFILE:-macbook}"
 
 cd "${PROJECT_DIR}"
 Rscript config.R --profile "${PROFILE}" --write-env --env-file "${PROJECT_DIR}/.env"
