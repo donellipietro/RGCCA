@@ -2,7 +2,9 @@
 
 #include <Eigen/Core>
 
-#ifndef EIGEN_INDEXED_VIEW_H
+#ifdef EIGEN_COMPAT_FORCE_PLACEHOLDER_ALL
+// TODO: remove this with the matching flag in cpp/compile.sh once the
+// Singularity image exposes Eigen::all.
 namespace Eigen {
 using placeholders::all;
 }

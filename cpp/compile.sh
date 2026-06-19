@@ -6,7 +6,6 @@ usage() {
 Usage:
   ./cpp/compile.sh <model_name>
   ./cpp/compile.sh --all
-  ./cpp/compile.sh --check-eigen
 USAGE
 
   if [[ -n "${PATH_CPP:-}" && -d "${PATH_CPP}" ]]; then
@@ -91,13 +90,8 @@ add_if_set() {
 
 compile_flags() {
   local eigen_compat_header="${PATH_CPP}/include/eigen_compat.h"
-  local eigen_compat_flags=(-include "${eigen_compat_header}")
+  local eigen_compat_flags=()
   local configured_flags
-
-  if [[ ! -f "${eigen_compat_header}" ]]; then
-    echo "Error: Eigen compatibility header not found: ${eigen_compat_header}" >&2
-    exit 1
-  fi
 
   include_flags=()
   add_if_set include_flags "-I" "${PATH_FDAPDE_CPP:-}"
@@ -115,6 +109,21 @@ compile_flags() {
       -std=c++20
       -march=native
       -DFDAPDE_ENABLE_COUT
+    )
+  fi
+
+  # Temporary workaround for the Eigen version in the current Singularity image.
+  # Remove this block and cpp/include/eigen_compat.h once the image exposes Eigen::all.
+  if [[ -n "${SINGULARITY_IMAGE:-}" ]]; then
+    if [[ ! -f "${eigen_compat_header}" ]]; then
+      echo "Error: Eigen compatibility header not found: ${eigen_compat_header}" >&2
+      exit 1
+    fi
+
+    eigen_compat_flags=(
+      -DEIGEN_COMPAT_FORCE_PLACEHOLDER_ALL
+      -include
+      "${eigen_compat_header}"
     )
   fi
 
@@ -207,42 +216,6 @@ compile_model() {
   printf 'All the source files have been compiled!\n\n'
 }
 
-check_eigen_compat() {
-  local tmp_base="${PATH_TMP:-/tmp}"
-  local src
-  local cmd
-
-  mkdir -p "${tmp_base}"
-  src="$(mktemp "${tmp_base%/}/eigen_compat_XXXXXX")"
-  trap 'rm -f "${src}"' RETURN
-
-  cat > "${src}" <<'CPP'
-#include <Eigen/Core>
-
-int main() {
-  auto all = Eigen::all;
-  (void)all;
-  return 0;
-}
-CPP
-
-  compile_flags
-  cmd=(
-    "${CXX:-g++}"
-    "${cxx_flags[@]}"
-    -x
-    c++
-    "${src}"
-    -fsyntax-only
-  )
-
-  printf 'Checking Eigen compatibility with command:'
-  printf ' %q' "${cmd[@]}"
-  printf '\n'
-  "${CPP_DIR}/run.sh" --quiet -- "${cmd[@]}"
-  echo "Eigen compatibility check passed."
-}
-
 path_required PATH_CPP
 path_required PATH_BUILD
 
@@ -258,9 +231,6 @@ case "${1:-}" in
   --make-help)
     usage_make
     exit 0
-    ;;
-  --check-eigen)
-    check_eigen_compat
     ;;
   --all)
     mapfile -t models < <(list_models)
