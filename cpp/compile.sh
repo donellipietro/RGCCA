@@ -6,6 +6,7 @@ usage() {
 Usage:
   ./cpp/compile.sh <model_name>
   ./cpp/compile.sh --all
+  ./cpp/compile.sh --check-eigen
 USAGE
 
   if [[ -n "${PATH_CPP:-}" && -d "${PATH_CPP}" ]]; then
@@ -206,6 +207,42 @@ compile_model() {
   printf 'All the source files have been compiled!\n\n'
 }
 
+check_eigen_compat() {
+  local tmp_base="${PATH_TMP:-/tmp}"
+  local src
+  local cmd
+
+  mkdir -p "${tmp_base}"
+  src="$(mktemp "${tmp_base%/}/eigen_compat_XXXXXX")"
+  trap 'rm -f "${src}"' RETURN
+
+  cat > "${src}" <<'CPP'
+#include <Eigen/Core>
+
+int main() {
+  auto all = Eigen::all;
+  (void)all;
+  return 0;
+}
+CPP
+
+  compile_flags
+  cmd=(
+    "${CXX:-g++}"
+    "${cxx_flags[@]}"
+    -x
+    c++
+    "${src}"
+    -fsyntax-only
+  )
+
+  printf 'Checking Eigen compatibility with command:'
+  printf ' %q' "${cmd[@]}"
+  printf '\n'
+  "${CPP_DIR}/run.sh" --quiet -- "${cmd[@]}"
+  echo "Eigen compatibility check passed."
+}
+
 path_required PATH_CPP
 path_required PATH_BUILD
 
@@ -221,6 +258,9 @@ case "${1:-}" in
   --make-help)
     usage_make
     exit 0
+    ;;
+  --check-eigen)
+    check_eigen_compat
     ;;
   --all)
     mapfile -t models < <(list_models)
