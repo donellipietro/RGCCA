@@ -43,7 +43,7 @@ PATH_BUILD := $(call config_value,PATH_BUILD)
 .PHONY: help config write_env install install_femR build create_dirs \
         ensure_env \
         compile compile_all \
-        clean_tmp clean_compiled clean clean_test distclean \
+        clean_tmp clean_compiled clean_links clean clean_test distclean \
         run_test run_test_parallel run_test_slurm inspect_results
 
 
@@ -80,8 +80,7 @@ install:  install_femR
 # compile_all
 create_dirs:
 	@echo "Creating necessary directories..."
-	@mkdir -p "$(PATH_RESULTS)" "$(PATH_IMAGES)" "$(PATH_TEST_DATA)"
-	@mkdir -p "$(PATH_TMP)" "$(PATH_QUEUE)" "$(PATH_LOGS)" "$(PATH_TMP_DATA)" "$(PATH_TMP_RESULTS)" "$(PATH_BUILD)"
+	@$(RSCRIPT) config.R --profile "$(TESTBENCH_PROFILE)" --create-dirs
 
 build: write_env create_dirs install
 	@printf '\nBuild completed.\n\n'
@@ -112,8 +111,12 @@ clean_compiled:
 	@$(RM) -r "$(PATH_BUILD)"
 	@find "$(PATH_CPP)" -mindepth 2 -maxdepth 2 -type f \( -name 'fit_model' -o -name 'fit_model_*' \) -exec $(RM) {} +
 
+## Clean root links to generated folders
+clean_links:
+	@$(RSCRIPT) config.R --profile "$(TESTBENCH_PROFILE)" --remove-links
+
 ## Clean temporary files, logs and R session files
-clean: clean_tmp
+clean: clean_tmp clean_links
 	@printf '\nCleaning temporary files...\n'
 	@$(RM) *.aux *.log *.pdf *.txt *.json
 	@$(RM) .Rhistory

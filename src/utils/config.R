@@ -31,6 +31,13 @@ as_scalar_character <- function(value) {
   paste(as.character(value), collapse = ",")
 }
 
+same_path <- function(path_a, path_b) {
+  if (is.na(path_a) || is.na(path_b)) return(FALSE)
+
+  normalizePath(path.expand(path_a), mustWork = FALSE) ==
+    normalizePath(path.expand(path_b), mustWork = FALSE)
+}
+
 add_derived_paths <- function(cfg) {
   cfg$PATH_REPO <- config_value(cfg, "PATH_REPO")
   cfg$PATH_TMP <- config_value(cfg, "PATH_TMP", file.path(cfg$PATH_REPO, "tmp"))
@@ -104,6 +111,99 @@ print_config <- function(cfg = get_config()) {
   invisible(cfg)
 }
 
+config_generated_dirs <- function(cfg = get_config()) {
+  unique(unname(c(
+    cfg$PATH_RESULTS,
+    cfg$PATH_IMAGES,
+    cfg$PATH_TEST_DATA,
+    cfg$PATH_TMP,
+    cfg$PATH_QUEUE,
+    cfg$PATH_LOGS,
+    cfg$PATH_TMP_DATA,
+    cfg$PATH_TMP_RESULTS,
+    cfg$PATH_BUILD
+  )))
+}
+
+config_root_links <- function(cfg = get_config()) {
+  c(
+    results = cfg$PATH_RESULTS,
+    images = cfg$PATH_IMAGES,
+    "data/tests" = cfg$PATH_TEST_DATA,
+    tmp = cfg$PATH_TMP,
+    build = cfg$PATH_BUILD
+  )
+}
+
+create_config_links <- function(cfg = get_config()) {
+  links <- config_root_links(cfg)
+
+  for (link_name in names(links)) {
+    target <- unname(links[[link_name]])
+    link_path <- file.path(cfg$PATH_REPO, link_name)
+
+    if (!nzchar(target) || same_path(target, link_path)) {
+      next
+    }
+
+    dir.create(dirname(link_path), recursive = TRUE, showWarnings = FALSE)
+
+    existing_link <- Sys.readlink(link_path)
+    if (!is.na(existing_link) && nzchar(existing_link)) {
+      if (!same_path(existing_link, target)) {
+        unlink(link_path)
+      } else {
+        next
+      }
+    } else if (file.exists(link_path)) {
+      warning(
+        paste0(
+          "Cannot create link ", link_path,
+          " because a regular file or directory already exists there."
+        ),
+        call. = FALSE
+      )
+      next
+    }
+
+    if (file.symlink(target, link_path)) {
+      cat("Linked", link_name, "->", target, "\n")
+    } else {
+      warning(paste("Could not create link:", link_path), call. = FALSE)
+    }
+  }
+
+  invisible(links)
+}
+
+remove_config_links <- function(cfg = get_config()) {
+  links <- config_root_links(cfg)
+
+  for (link_name in names(links)) {
+    link_path <- file.path(cfg$PATH_REPO, link_name)
+    existing_link <- Sys.readlink(link_path)
+
+    if (!is.na(existing_link) && nzchar(existing_link)) {
+      unlink(link_path)
+      cat("Removed link", link_name, "\n")
+    }
+  }
+
+  invisible(links)
+}
+
+create_config_dirs <- function(cfg = get_config()) {
+  dirs <- config_generated_dirs(cfg)
+  dirs <- dirs[nzchar(dirs)]
+
+  for (path in dirs) {
+    dir.create(path, recursive = TRUE, showWarnings = FALSE)
+  }
+
+  create_config_links(cfg)
+  invisible(dirs)
+}
+
 write_env <- function(cfg = get_config(),
                       env_file = file.path(cfg$PATH_REPO, ".env")) {
   env_values <- vapply(cfg, as_scalar_character, character(1))
@@ -123,6 +223,8 @@ config_usage <- function() {
     "Usage:\n",
     "  Rscript config.R --profile <profile> --print\n",
     "  Rscript config.R --profile <profile> --write-env [--env-file <path>]\n",
+    "  Rscript config.R --profile <profile> --create-dirs\n",
+    "  Rscript config.R --profile <profile> --remove-links\n",
     "\n",
     "Profiles:\n",
     paste0("  - ", available_profiles(), collapse = "\n"),
@@ -136,6 +238,8 @@ parse_config_cli <- function(args) {
     profile = Sys.getenv("TESTBENCH_PROFILE", "macbook"),
     print = FALSE,
     write_env = FALSE,
+    create_dirs = FALSE,
+    remove_links = FALSE,
     env_file = NULL,
     help = FALSE
   )
@@ -150,6 +254,10 @@ parse_config_cli <- function(args) {
       out$print <- TRUE
     } else if (arg == "--write-env") {
       out$write_env <- TRUE
+    } else if (arg == "--create-dirs") {
+      out$create_dirs <- TRUE
+    } else if (arg == "--remove-links") {
+      out$remove_links <- TRUE
     } else if (arg == "--profile") {
       i <- i + 1
       if (i > length(args)) stop("--profile requires a value", call. = FALSE)
@@ -192,7 +300,7 @@ config_main <- function() {
 
   cfg <- get_config(args$profile)
 
-  if (!args$print && !args$write_env) {
+  if (!args$print && !args$write_env && !args$create_dirs && !args$remove_links) {
     config_usage()
     return(invisible(NULL))
   }
@@ -205,6 +313,14 @@ config_main <- function() {
     env_file <- first_non_empty(args$env_file, file.path(cfg$PATH_REPO, ".env"))
     write_env(cfg, env_file)
     cat("Wrote environment file:", env_file, "\n")
+  }
+
+  if (args$create_dirs) {
+    create_config_dirs(cfg)
+  }
+
+  if (args$remove_links) {
+    remove_config_links(cfg)
   }
 
   invisible(cfg)

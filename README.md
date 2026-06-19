@@ -43,6 +43,12 @@ make build TESTBENCH_PROFILE=donders_hcp
 After that, regular `make` targets reuse the profile from `.env`.
 `make clean` preserves `.env`; `make distclean` removes it.
 
+If a profile stores generated folders outside the repository, `make build`
+creates root-level links for `results`, `images`, `data/tests`, `tmp`, and
+`build` when those paths are not already regular files or directories.
+`make clean` removes these root-level links without removing regular folders
+that happen to exist at the same paths.
+
 On a Slurm cluster, submit one array task per generated JSON option file:
 
 ```bash
