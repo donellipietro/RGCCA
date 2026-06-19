@@ -44,6 +44,32 @@ fit_model <- function(model_name, data, path_list, test_options) {
 }
 
 
+run_cpp_executable <- function(path_list, path_cpp_script, executable, file_name_params) {
+  runner <- normalizePath(file.path(path_list$cpp, "run.sh"), mustWork = TRUE)
+  status <- system2(
+    runner,
+    args = c(
+      "--workdir", path_cpp_script,
+      "--quiet",
+      "--",
+      paste0("./", executable),
+      file_name_params
+    ),
+    stdout = if (isTRUE(IGNORE_CPP_OUTPUT)) FALSE else "",
+    stderr = ""
+  )
+
+  if (!is.null(status) && !is.na(status) && status != 0) {
+    stop(
+      paste("C++ executable failed:", executable, "(exit status", status, ")"),
+      call. = FALSE
+    )
+  }
+
+  invisible(status)
+}
+
+
 R_RGCCA <- function(model_name, data, test_options) {
   ## Initialize empty model
   model <- list()
@@ -300,113 +326,63 @@ CPP_RGCCA <- function(model_name, data, test_options, path_list) {
     OPENBLAS_NUM_THREADS = "1",
     VECLIB_MAXIMUM_THREADS = "1"
   )
+  run_cpp <- function(executable) {
+    run_cpp_executable(path_list, path_cpp_script, executable, file_name_params)
+  }
+
   switch(model_name,
-         CPP_GCCA_cor = system(
-           paste0("cd ", path_cpp_script, " && ", "./fit_model_RGCCA ", file_name_params),
-           ignore.stdout = IGNORE_CPP_OUTPUT
-         ),
-         CPP_RGCCA = system(
-           paste0("cd ", path_cpp_script, " && ", "./fit_model_RGCCA ", file_name_params),
-           ignore.stdout = IGNORE_CPP_OUTPUT
-         ),
-         CPP_GCCA_cov = system(
-           paste0("cd ", path_cpp_script, " && ", "./fit_model_RGCCA ", file_name_params),
-           ignore.stdout = IGNORE_CPP_OUTPUT
-         ),
-         CPP_GCCA_NN_cor = system(
-           paste0("cd ", path_cpp_script, " && ", "./fit_model_RGCCA ", file_name_params),
-           ignore.stdout = IGNORE_CPP_OUTPUT
-         ),
-         CPP_RGCCA_NN = system(
-           paste0("cd ", path_cpp_script, " && ", "./fit_model_RGCCA ", file_name_params),
-           ignore.stdout = IGNORE_CPP_OUTPUT
-         ),
-         CPP_GCCA_NN_cov = system(
-           paste0("cd ", path_cpp_script, " && ", "./fit_model_RGCCA ", file_name_params),
-           ignore.stdout = IGNORE_CPP_OUTPUT
-         ),
+         CPP_GCCA_cor = run_cpp("fit_model_RGCCA"),
+         CPP_RGCCA = run_cpp("fit_model_RGCCA"),
+         CPP_GCCA_cov = run_cpp("fit_model_RGCCA"),
+         CPP_GCCA_NN_cor = run_cpp("fit_model_RGCCA"),
+         CPP_RGCCA_NN = run_cpp("fit_model_RGCCA"),
+         CPP_GCCA_NN_cov = run_cpp("fit_model_RGCCA"),
          CPP_fGCCA_cor_FEM = {
-           system(
-             paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_fem ", file_name_params),
-             ignore.stdout = IGNORE_CPP_OUTPUT
-           )
+           run_cpp("fit_model_fRGCCA_fem")
            grid_D <- TRUE
          },
          CPP_fRGCCA_FEM = {
-           system(
-             paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_fem ", file_name_params),
-             ignore.stdout = IGNORE_CPP_OUTPUT
-           )
+           run_cpp("fit_model_fRGCCA_fem")
            grid_D <- TRUE
          },
          CPP_fGCCA_cov_FEM = {
-           system(
-             paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_fem ", file_name_params),
-             ignore.stdout = IGNORE_CPP_OUTPUT
-           )
+           run_cpp("fit_model_fRGCCA_fem")
            grid_D <- TRUE
          },
          CPP_fGCCA_NN_cor_FEM = {
-           system(
-             paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_fem ", file_name_params),
-             ignore.stdout = IGNORE_CPP_OUTPUT
-           )
+           run_cpp("fit_model_fRGCCA_fem")
            grid_D <- TRUE
          },
          CPP_fRGCCA_NN_FEM = {
-           system(
-             paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_fem ", file_name_params),
-             ignore.stdout = IGNORE_CPP_OUTPUT
-           )
+           run_cpp("fit_model_fRGCCA_fem")
            grid_D <- TRUE
          },
          CPP_fGCCA_NN_cov_FEM = {
-           system(
-             paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_fem ", file_name_params),
-             ignore.stdout = IGNORE_CPP_OUTPUT
-           )
+           run_cpp("fit_model_fRGCCA_fem")
            grid_D <- TRUE
          },
          CPP_fGCCA_cor_SPLINES = {
-           system(
-             paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_splines ", file_name_params),
-             ignore.stdout = IGNORE_CPP_OUTPUT
-           )
+           run_cpp("fit_model_fRGCCA_splines")
            grid_D <- TRUE
          },
          CPP_fRGCCA_SPLINES = {
-           system(
-             paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_splines ", file_name_params),
-             ignore.stdout = IGNORE_CPP_OUTPUT
-           )
+           run_cpp("fit_model_fRGCCA_splines")
            grid_D <- TRUE
          },
          CPP_fGCCA_cov_SPLINES = {
-           system(
-             paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_splines ", file_name_params),
-             ignore.stdout = IGNORE_CPP_OUTPUT
-           )
+           run_cpp("fit_model_fRGCCA_splines")
            grid_D <- TRUE
          },
          CPP_fGCCA_NN_cor_SPLINES = {
-           system(
-             paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_splines ", file_name_params),
-             ignore.stdout = IGNORE_CPP_OUTPUT
-           )
+           run_cpp("fit_model_fRGCCA_splines")
            grid_D <- TRUE
          },
          CPP_fRGCCA_NN_SPLINES = {
-           system(
-             paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_splines ", file_name_params),
-             ignore.stdout = IGNORE_CPP_OUTPUT
-           )
+           run_cpp("fit_model_fRGCCA_splines")
            grid_D <- TRUE
          },
          CPP_fGCCA_NN_cov_SPLINES = {
-           system(
-             paste0("cd ", path_cpp_script, " && ", "./fit_model_fRGCCA_splines ", file_name_params),
-             ignore.stdout = IGNORE_CPP_OUTPUT
-           )
+           run_cpp("fit_model_fRGCCA_splines")
            grid_D <- TRUE
          }
   )

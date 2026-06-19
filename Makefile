@@ -25,7 +25,7 @@ $(strip $(shell $(RSCRIPT) -e 'source("config.R"); cfg <- get_config("$(TESTBENC
 endef
 
 
-# C++ compiler ----
+# Repository paths ----
 PATH_REPO := $(call config_value,PATH_REPO)
 PATH_CPP := $(call config_value,PATH_CPP)
 PATH_RESULTS := $(call config_value,PATH_RESULTS)
@@ -37,32 +37,6 @@ PATH_LOGS := $(call config_value,PATH_LOGS)
 PATH_TMP_DATA := $(call config_value,PATH_TMP_DATA)
 PATH_TMP_RESULTS := $(call config_value,PATH_TMP_RESULTS)
 PATH_BUILD := $(call config_value,PATH_BUILD)
-
-CC = $(call config_value,CC)
-CXX = $(call config_value,CXX)
-PATH_FDAPDE_CPP := $(call config_value,PATH_FDAPDE_CPP)
-PATH_FDAPDE_CORE := $(call config_value,PATH_FDAPDE_CORE)
-PATH_IPOPT_INCLUDE := $(call config_value,PATH_IPOPT_INCLUDE)
-PATH_IPOPT_LIB := $(call config_value,PATH_IPOPT_LIB)
-PATH_EIGEN_INCLUDE := $(call config_value,PATH_EIGEN_INCLUDE)
-SINGULARITY_IMAGE := $(call config_value,SINGULARITY_IMAGE)
-SINGULARITY_BIND_PATHS := $(call config_value,SINGULARITY_BIND_PATHS)
-
-INCLUDE_DIRS := $(PATH_FDAPDE_CPP) $(PATH_FDAPDE_CORE) $(PATH_IPOPT_INCLUDE) $(PATH_EIGEN_INCLUDE)
-CXX_INCLUDES := $(foreach dir,$(INCLUDE_DIRS),$(if $(strip $(dir)),-I$(dir),))
-LIB_DIRS := $(PATH_IPOPT_LIB)
-LIBRARY_PATHS := $(foreach dir,$(LIB_DIRS),$(if $(strip $(dir)),-L$(dir),))
-
-CXXFLAGS ?= -O3 -Wno-psabi -std=c++20 -march=native -DFDAPDE_ENABLE_COUT $(CXX_INCLUDES)
-LDFLAGS ?= $(LIBRARY_PATHS)
-LDLIBS ?= -lipopt
-
-ifeq ($(strip $(SINGULARITY_IMAGE)),)
-RUNTIME_PREFIX :=
-else
-RUNTIME_PREFIX := singularity exec $(if $(strip $(SINGULARITY_BIND_PATHS)),--bind "$(SINGULARITY_BIND_PATHS)") "$(SINGULARITY_IMAGE)"
-endif
-
 
 
 # Targets ----
@@ -114,72 +88,17 @@ build: write_env create_dirs install
 	
 ## Compile C++ model ----
 
-# Discover models under cpp/, excluding 'include'
-MODELS := $(filter-out include,$(notdir $(wildcard $(PATH_CPP)/*)))
-
 ## Compile all models under cpp/
-compile_all:
-	@printf '\nCompiling all models in $(PATH_CPP)...\n'
-	@for model in $$(find "$(PATH_CPP)" -mindepth 1 -maxdepth 1 -type d ! -name include -exec basename {} \; | sort); do \
-		$(MAKE) --no-print-directory compile MODEL=$$model || exit $$?; \
-	done
-	@printf 'All models compiled successfully.\n\n'
+compile_all: ensure_env
+	@./cpp/compile.sh --all
 
 ## Compile all mains found in cpp/$(MODEL)
 # Usage: make compile MODEL=my_model
-compile:
+compile: ensure_env
 	@if [ -z "$(MODEL)" ]; then \
-		printf '\nUsage: make compile MODEL=<model_name>\n'; \
-		echo ""; \
-		echo "Available MODELS:"; \
-		find "$(PATH_CPP)" -mindepth 1 -maxdepth 1 -type d ! -name include -exec basename {} \; | \
-		while read m; do \
-			ls "$(PATH_CPP)/$$m"/main*.cpp >/dev/null 2>&1 && echo $$m; \
-		done | sort | sed 's/^\(.*\)/- \1 (make compile MODEL=\1)/'; \
-		echo ""; \
-		exit 0; \
-	elif [ ! -d "$(PATH_CPP)/$(MODEL)" ]; then \
-		printf '\nError: model directory $(PATH_CPP)/$(MODEL) not found.\n'; \
-		exit 1; \
+		./cpp/compile.sh --make-help; \
 	else \
-		printf '\nCompiling mains in cpp/$(MODEL) ...\n'; \
-		if [ -n "$(SINGULARITY_IMAGE)" ]; then \
-			echo "Runtime: Singularity"; \
-			echo "Image: $(SINGULARITY_IMAGE)"; \
-			echo "Bind paths: $(SINGULARITY_BIND_PATHS)"; \
-			if ! command -v singularity >/dev/null 2>&1; then \
-				echo "Error: SINGULARITY_IMAGE is set, but singularity is not available in PATH."; \
-				exit 1; \
-			fi; \
-			if [ ! -f "$(SINGULARITY_IMAGE)" ]; then \
-				echo "Error: Singularity image not found: $(SINGULARITY_IMAGE)"; \
-				exit 1; \
-			fi; \
-		else \
-			echo "Runtime: host"; \
-		fi; \
-		echo "Compiler: $(CXX)"; \
-		mains=$$(ls "$(PATH_CPP)/$(MODEL)"/main*.cpp 2>/dev/null || true); \
-		if [ -z "$$mains" ]; then \
-			echo "No main*.cpp found in $(PATH_CPP)/$(MODEL)"; \
-			exit 1; \
-		fi; \
-		for src in $$mains; do \
-			base=$$(basename "$$src"); \
-			case "$$base" in \
-				main.cpp) bin="fit_model" ;; \
-				main_*.cpp) stem=$${base#main_}; stem=$${stem%.cpp}; bin="fit_model_$$stem" ;; \
-				*) continue ;; \
-			esac; \
-			out="$(PATH_CPP)/$(MODEL)/$$bin"; \
-			if [ ! -f "$$out" ] || [ "$$src" -nt "$$out" ]; then \
-				echo "- $$src  ==>  $$out"; \
-				$(RUNTIME_PREFIX) $(CXX) -o "$$out" "$$src" $(CXXFLAGS) $(LDFLAGS) $(LDLIBS); \
-			else \
-				echo "- $$out is up to date"; \
-			fi; \
-		done; \
-		printf 'All the source files have been compiled!\n\n'; \
+		./cpp/compile.sh "$(MODEL)"; \
 	fi
 
 # Clean targets ----
@@ -190,6 +109,7 @@ clean_tmp:
 	
 ## Clean compiled binaries
 clean_compiled:
+	@$(RM) -r "$(PATH_BUILD)"
 	@find "$(PATH_CPP)" -mindepth 2 -maxdepth 2 -type f \( -name 'fit_model' -o -name 'fit_model_*' \) -exec $(RM) {} +
 
 ## Clean temporary files, logs and R session files
@@ -245,7 +165,7 @@ run_test: ensure_env
 		exit 0; \
 	else \
 		echo "Running: $(TEST_NAME) from suite $(TEST_SUITE)"; \
-		./run_tests.sh "$(TEST_SUITE)" "$(TEST_NAME)"; \
+		./tests/run_tests.sh "$(TEST_SUITE)" "$(TEST_NAME)"; \
 	fi
 	
 ## Run all the batches of a test in parallel
@@ -261,7 +181,7 @@ run_test_parallel: ensure_env
 		exit 0; \
 	else \
 		echo "Running: $(TEST_NAME) from suite $(TEST_SUITE)"; \
-		./run_tests_parallel.sh "$(TEST_SUITE)" "$(TEST_NAME)"; \
+		./tests/run_tests_parallel.sh "$(TEST_SUITE)" "$(TEST_NAME)"; \
 	fi
 
 ## Submit all batches of a test to Slurm as a job array
@@ -291,7 +211,7 @@ run_test_slurm:
 		SLURM_AGG_CPUS="$(SLURM_AGG_CPUS)" \
 		SLURM_AGG_MEM="$(SLURM_AGG_MEM)" \
 		SLURM_AGG_TIME="$(SLURM_AGG_TIME)" \
-		./run_tests_slurm.sh "$(TEST_SUITE)" "$(TEST_NAME)"; \
+		./tests/run_tests_slurm.sh "$(TEST_SUITE)" "$(TEST_NAME)"; \
 	fi
 
 ## Inspect results of a specific test interactively

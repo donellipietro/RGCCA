@@ -122,6 +122,6 @@ As clear from the script, the complexity of dealing with multiple configurations
 
 ### Execution Workflow
 
-The [`./run_tests.sh`](../run_tests.sh) script first calls the `generate_options` script for the desired test by means of [init.R](../src/init.R), then retrieves the test configurations from the `./queue/` directory and calls the appropriate `main.R` script for each test scenario. This modular approach enables easy parallelization of tests execution, allowing for efficient utilization of computational resources and faster evaluation of methods.
+The [`./run_tests.sh`](./run_tests.sh) script first calls the `generate_options` script for the desired test by means of [init.R](../src/init.R), then retrieves the test configurations from the `./queue/` directory and calls the appropriate `main.R` script for each test scenario. This modular approach enables easy parallelization of tests execution, allowing for efficient utilization of computational resources and faster evaluation of methods.
 
 By following this approach, each call of a `main.R` script produces results and figures relative to that specific call. When each configuration has been analysed, the `post_processing.R` imports all the saved results and produces overall results figures.

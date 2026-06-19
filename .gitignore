@@ -12,6 +12,7 @@ results/
 images/
 queue/
 data/*
+build/
 cpp/*/fit_model*
 .idea/
 

@@ -66,7 +66,8 @@ create_paths <- function(test_suite) {
     cfg$PATH_QUEUE,
     cfg$PATH_LOGS,
     cfg$PATH_TMP_DATA,
-    cfg$PATH_TMP_RESULTS
+    cfg$PATH_TMP_RESULTS,
+    cfg$PATH_BUILD
   ))
   path_queue <- config_path(cfg$PATH_QUEUE, test_suite)
   path_logs <- config_path(cfg$PATH_LOGS, test_suite)
@@ -78,6 +79,7 @@ create_paths <- function(test_suite) {
   path_list <- list(
     repo = config_path(cfg$PATH_REPO),
     cpp = config_path(cfg$PATH_CPP),
+    build = config_path(cfg$PATH_BUILD),
     results = path_results,
     images = path_images,
     data = path_data,
@@ -118,9 +120,9 @@ update_paths <- function(path_list, name_main_test, test_options) {
   }
 
   ## Add cpp_scripts path to path_list
-  path_list$cpp_script <- config_path(path_list$cpp, test_options$cpp_script)
+  path_list$cpp_script_source <- config_path(path_list$cpp, test_options$cpp_script)
+  path_list$cpp_script <- config_path(path_list$build, test_options$cpp_script)
 
-  ## Check if the C++ has been compiled
   ## Check if the C++ has been compiled
   compiled_files <- list.files(
     path = path_list$cpp_script,
