@@ -88,6 +88,18 @@ add_if_set() {
   fi
 }
 
+display_path() {
+  local path="$1"
+
+  if [[ "${path}" == "${PROJECT_DIR}" ]]; then
+    printf '.'
+  elif [[ "${path}" == "${PROJECT_DIR}/"* ]]; then
+    printf '%s' "${path#"${PROJECT_DIR}/"}"
+  else
+    printf '%s' "${path}"
+  fi
+}
+
 compile_flags() {
   local eigen_compat_header="${PATH_CPP}/include/eigen_compat.h"
   local eigen_compat_flags=()
@@ -168,7 +180,7 @@ compile_model() {
   local model="$1"
   local model_dir="${PATH_CPP}/${model}"
   local build_dir="${PATH_BUILD}/${model}"
-  local mains src base bin out
+  local mains src base bin out src_display out_display
 
   if [[ ! -d "${model_dir}" ]]; then
     echo "Error: model directory not found: ${model_dir}" >&2
@@ -195,7 +207,9 @@ compile_model() {
     out="${build_dir}/${bin}"
 
     if [[ ! -f "${out}" || "${src}" -nt "${out}" ]]; then
-      echo "- ${src}  ==>  ${out}"
+      src_display="$(display_path "${src}")"
+      out_display="$(display_path "${out}")"
+      echo "- ${src_display}  ==>  ${out_display}"
       cmd=(
         "${CXX:-g++}" \
         "${cxx_flags[@]}" \
@@ -204,12 +218,9 @@ compile_model() {
         "${ld_flags[@]}" \
         "${ld_libs[@]}"
       )
-      printf '  Command:'
-      printf ' %q' "${cmd[@]}"
-      printf '\n'
       "${CPP_DIR}/run.sh" --quiet -- "${cmd[@]}"
     else
-      echo "- ${out} is up to date"
+      echo "- $(display_path "${out}") is up to date"
     fi
   done
 
@@ -239,7 +250,7 @@ case "${1:-}" in
       exit 1
     fi
 
-    printf '\nCompiling all models in %s...\n' "${PATH_CPP}"
+    printf '\nCompiling all models in %s...\n' "$(display_path "${PATH_CPP}")"
     for model in "${models[@]}"; do
       compile_model "${model}"
     done

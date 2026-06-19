@@ -66,6 +66,18 @@ set -a
 source "${PROJECT_DIR}/.env"
 set +a
 
+display_path() {
+  local path="$1"
+
+  if [[ "${path}" == "${PROJECT_DIR}" ]]; then
+    printf '.'
+  elif [[ "${path}" == "${PROJECT_DIR}/"* ]]; then
+    printf '%s' "${path#"${PROJECT_DIR}/"}"
+  else
+    printf '%s' "${path}"
+  fi
+}
+
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
 export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-1}"
 export VECLIB_MAXIMUM_THREADS="${VECLIB_MAXIMUM_THREADS:-1}"
@@ -94,7 +106,7 @@ if [[ "${DESCRIBE}" -eq 1 || "${QUIET}" -eq 0 ]]; then
     echo "Image: ${SINGULARITY_IMAGE}"
     echo "Bind paths: ${SINGULARITY_BIND_PATHS:-}"
   fi
-  echo "Working directory: ${WORKDIR}"
+  echo "Working directory: $(display_path "${WORKDIR}")"
 fi
 
 if [[ "${DESCRIBE}" -eq 1 ]]; then
