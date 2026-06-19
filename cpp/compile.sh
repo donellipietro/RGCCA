@@ -91,6 +91,7 @@ add_if_set() {
 compile_flags() {
   local eigen_compat_header="${PATH_CPP}/include/eigen_compat.h"
   local eigen_compat_flags=(-include "${eigen_compat_header}")
+  local configured_flags
 
   if [[ ! -f "${eigen_compat_header}" ]]; then
     echo "Error: Eigen compatibility header not found: ${eigen_compat_header}" >&2
@@ -105,18 +106,18 @@ compile_flags() {
 
   if [[ -n "${CXXFLAGS:-}" ]]; then
     split_flags "${CXXFLAGS}"
-    cxx_flags=("${SPLIT_FLAGS_RESULT[@]}" "${eigen_compat_flags[@]}")
+    configured_flags=("${SPLIT_FLAGS_RESULT[@]}")
   else
-    cxx_flags=(
+    configured_flags=(
       -O3
       -Wno-psabi
       -std=c++20
       -march=native
       -DFDAPDE_ENABLE_COUT
-      "${include_flags[@]}"
-      "${eigen_compat_flags[@]}"
     )
   fi
+
+  cxx_flags=("${configured_flags[@]}" "${include_flags[@]}" "${eigen_compat_flags[@]}")
 
   if [[ -n "${LDFLAGS:-}" ]]; then
     split_flags "${LDFLAGS}"
@@ -185,13 +186,18 @@ compile_model() {
 
     if [[ ! -f "${out}" || "${src}" -nt "${out}" ]]; then
       echo "- ${src}  ==>  ${out}"
-      "${CPP_DIR}/run.sh" --quiet -- \
+      cmd=(
         "${CXX:-g++}" \
+        "${cxx_flags[@]}" \
         -o "${out}" \
         "${src}" \
-        "${cxx_flags[@]}" \
         "${ld_flags[@]}" \
         "${ld_libs[@]}"
+      )
+      printf '  Command:'
+      printf ' %q' "${cmd[@]}"
+      printf '\n'
+      "${CPP_DIR}/run.sh" --quiet -- "${cmd[@]}"
     else
       echo "- ${out} is up to date"
     fi
