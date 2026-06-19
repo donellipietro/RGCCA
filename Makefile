@@ -53,14 +53,16 @@ PATH_BUILD := $(call config_value,PATH_BUILD)
         run_test run_test_parallel run_test_slurm inspect_results
 
 
-# Default target ----
+## Build the repository with the active profile
 all: build
 
 
 # Config targets ----
+## Print the selected configuration profile
 config:
 	@$(RSCRIPT) config.R --profile "$(TESTBENCH_PROFILE)" --print
 
+## Write the active profile to .env
 write_env:
 	@$(RSCRIPT) config.R --profile "$(TESTBENCH_PROFILE)" --write-env
 
@@ -72,26 +74,29 @@ ensure_env:
 
 
 # Installation targets ----
+## Install femR into the active R library
 install_femR: write_env create_dirs
 	@printf '\nInstalling femR...\n'
 	@set -a; source .env; set +a; $(RSCRIPT) src/installation/install_femR.R
 # install_fdaPDE:
 # 	@printf '\nInstalling fdaPDE...\n'
 # 	@$(RSCRIPT) src/installation/install_fdaPDE.R
-install:  install_femR 
+## Install repository R dependencies
+install: install_femR
 	@printf '\nInstallation completed.\n'
 
 
 # Build target ----
-# compile_all
+## Create generated directories and root shortcuts
 create_dirs:
 	@echo "Creating necessary directories..."
 	@$(RSCRIPT) config.R --profile "$(TESTBENCH_PROFILE)" --create-dirs
 
+## Write .env, create directories, and install dependencies
 build: write_env create_dirs install
 	@printf '\nBuild completed.\n\n'
 	
-## Compile C++ model ----
+# Compile targets ----
 
 ## Compile all models under cpp/
 compile_all: ensure_env
@@ -100,29 +105,28 @@ compile_all: ensure_env
 ## Compile all mains found in cpp/$(MODEL), or one executable with TARGET
 # Usage: make compile MODEL=my_model [TARGET=fit_model]
 compile: ensure_env
-	@if [ -z "$(MODEL)" ]; then \
+	@set -euo pipefail; \
+	if [ -z "$(MODEL)" ]; then \
 		./cpp/compile.sh --make-help; \
-	elif [ -z "$(COMPILE_TARGET)" ]; then \
-		./cpp/compile.sh "$(MODEL)"; \
 	else \
-		./cpp/compile.sh "$(MODEL)" "$(COMPILE_TARGET)"; \
+		args=("$(MODEL)"); \
+		if [ -n "$(COMPILE_TARGET)" ]; then \
+			args+=("$(COMPILE_TARGET)"); \
+		fi; \
+		./cpp/compile.sh "$${args[@]}"; \
 	fi
 
 ## Submit a C++ compile job to Slurm
 # Usage: make compile_slurm MODEL=my_model TARGET=fit_model
 compile_slurm: ensure_env
-	@if [ -z "$(MODEL)" ]; then \
-		./cpp/compile_slurm.sh --help; \
-	elif [ -z "$(COMPILE_TARGET)" ]; then \
-		SLURM_COMPILE_CPUS="$(SLURM_COMPILE_CPUS)" \
-		SLURM_COMPILE_MEM="$(SLURM_COMPILE_MEM)" \
-		SLURM_COMPILE_TIME="$(SLURM_COMPILE_TIME)" \
-		SLURM_DRY_RUN="$(SLURM_DRY_RUN)" \
-		SLURM_PARTITION="$(SLURM_PARTITION)" \
-		SLURM_ACCOUNT="$(SLURM_ACCOUNT)" \
-		SLURM_QOS="$(SLURM_QOS)" \
-		./cpp/compile_slurm.sh "$(MODEL)"; \
+	@set -euo pipefail; \
+	if [ -z "$(MODEL)" ]; then \
+		./cpp/compile_slurm.sh --make-help; \
 	else \
+		args=("$(MODEL)"); \
+		if [ -n "$(COMPILE_TARGET)" ]; then \
+			args+=("$(COMPILE_TARGET)"); \
+		fi; \
 		SLURM_COMPILE_CPUS="$(SLURM_COMPILE_CPUS)" \
 		SLURM_COMPILE_MEM="$(SLURM_COMPILE_MEM)" \
 		SLURM_COMPILE_TIME="$(SLURM_COMPILE_TIME)" \
@@ -130,7 +134,7 @@ compile_slurm: ensure_env
 		SLURM_PARTITION="$(SLURM_PARTITION)" \
 		SLURM_ACCOUNT="$(SLURM_ACCOUNT)" \
 		SLURM_QOS="$(SLURM_QOS)" \
-		./cpp/compile_slurm.sh "$(MODEL)" "$(COMPILE_TARGET)"; \
+		./cpp/compile_slurm.sh "$${args[@]}"; \
 	fi
 
 ## Submit all C++ compile jobs to Slurm

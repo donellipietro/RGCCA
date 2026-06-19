@@ -6,6 +6,7 @@ usage() {
 Usage:
   ./cpp/compile_slurm.sh <model_name> [target]
   ./cpp/compile_slurm.sh --all
+  ./cpp/compile_slurm.sh --make-help
 
 Options:
   --parsable              Print only the submitted job id.
@@ -23,6 +24,23 @@ Environment options:
 USAGE
 }
 
+usage_make() {
+  cat <<'USAGE'
+Usage:
+  make compile_slurm MODEL=<model_name> [TARGET=<target>]
+  make compile_slurm MODEL=<model_name> TARGET=all
+  make compile_all_slurm
+
+Available Slurm compile targets:
+USAGE
+
+  if [[ -n "${PATH_CPP:-}" && -d "${PATH_CPP}" ]]; then
+    list_models | while IFS= read -r model; do
+      list_targets_for_model "${model}"
+    done
+  fi
+}
+
 is_truthy() {
   case "${1:-}" in
     1|true|TRUE|yes|YES|y|Y) return 0 ;;
@@ -34,6 +52,57 @@ CPP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${CPP_DIR}/.." && pwd)"
 PARSABLE=0
 DEPENDENCY=""
+
+list_models() {
+  local model_dir model mains
+
+  shopt -s nullglob
+  for model_dir in "${PATH_CPP}"/*; do
+    [[ -d "${model_dir}" ]] || continue
+    model="$(basename "${model_dir}")"
+    [[ "${model}" != "include" ]] || continue
+
+    mains=("${model_dir}"/main*.cpp)
+    if [[ "${#mains[@]}" -gt 0 ]]; then
+      printf '%s\n' "${model}"
+    fi
+  done | sort
+}
+
+binary_name_for_source() {
+  local base="$1"
+  local stem
+
+  case "${base}" in
+    main.cpp)
+      printf 'fit_model\n'
+      ;;
+    main_*.cpp)
+      stem="${base#main_}"
+      stem="${stem%.cpp}"
+      printf 'fit_model_%s\n' "${stem}"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+list_targets_for_model() {
+  local model="$1"
+  local model_dir="${PATH_CPP}/${model}"
+  local mains src base bin
+
+  shopt -s nullglob
+  mains=("${model_dir}"/main*.cpp)
+
+  for src in "${mains[@]}"; do
+    base="$(basename "${src}")"
+    bin="$(binary_name_for_source "${base}")"
+    printf -- '- %s: %s -> %s (make compile_slurm MODEL=%s TARGET=%s)\n' \
+      "${model}" "${base}" "${bin}" "${model}" "${bin}"
+  done
+}
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -71,6 +140,11 @@ fi
 set -a
 source "${PROJECT_DIR}/.env"
 set +a
+
+if [[ "${1:-}" == "--make-help" ]]; then
+  usage_make
+  exit 0
+fi
 
 if [[ $# -lt 1 ]]; then
   usage

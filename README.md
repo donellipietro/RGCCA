@@ -48,6 +48,8 @@ creates root-level links for `results`, `images`, `data/tests`, `tmp`, and
 `build` when those paths are not already regular files or directories.
 `make clean` removes these root-level links without removing regular folders
 that happen to exist at the same paths.
+Some SSH/SFTP clients render POSIX symlinks as executable-looking files; the
+actual target paths are always available with `make config`.
 
 On a Slurm cluster, submit one array task per generated JSON option file:
 
