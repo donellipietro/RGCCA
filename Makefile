@@ -19,6 +19,12 @@ SLURM_QOS ?=
 SLURM_AGG_CPUS ?=
 SLURM_AGG_MEM ?=
 SLURM_AGG_TIME ?=
+SLURM_COMPILE_CPUS ?=
+SLURM_COMPILE_MEM ?=
+SLURM_COMPILE_TIME ?=
+SLURM_COMPILE_MODEL ?=
+SLURM_COMPILE_TARGET ?=
+COMPILE_TARGET ?= $(if $(TARGET),$(TARGET),$(if $(EXEC),$(EXEC),$(SOURCE)))
 
 define config_value
 $(strip $(shell $(RSCRIPT) -e 'source("config.R"); cfg <- get_config("$(TESTBENCH_PROFILE)"); value <- cfg[["$(1)"]]; if (is.null(value)) value <- ""; cat(value)'))
@@ -42,7 +48,7 @@ PATH_BUILD := $(call config_value,PATH_BUILD)
 # Targets ----
 .PHONY: help config write_env install install_femR build create_dirs \
         ensure_env \
-        compile compile_all \
+        compile compile_all compile_slurm compile_all_slurm \
         clean_tmp clean_compiled clean_links clean clean_test distclean \
         run_test run_test_parallel run_test_slurm inspect_results
 
@@ -91,14 +97,52 @@ build: write_env create_dirs install
 compile_all: ensure_env
 	@./cpp/compile.sh --all
 
-## Compile all mains found in cpp/$(MODEL)
-# Usage: make compile MODEL=my_model
+## Compile all mains found in cpp/$(MODEL), or one executable with TARGET
+# Usage: make compile MODEL=my_model [TARGET=fit_model]
 compile: ensure_env
 	@if [ -z "$(MODEL)" ]; then \
 		./cpp/compile.sh --make-help; \
-	else \
+	elif [ -z "$(COMPILE_TARGET)" ]; then \
 		./cpp/compile.sh "$(MODEL)"; \
+	else \
+		./cpp/compile.sh "$(MODEL)" "$(COMPILE_TARGET)"; \
 	fi
+
+## Submit a C++ compile job to Slurm
+# Usage: make compile_slurm MODEL=my_model TARGET=fit_model
+compile_slurm: ensure_env
+	@if [ -z "$(MODEL)" ]; then \
+		./cpp/compile_slurm.sh --help; \
+	elif [ -z "$(COMPILE_TARGET)" ]; then \
+		SLURM_COMPILE_CPUS="$(SLURM_COMPILE_CPUS)" \
+		SLURM_COMPILE_MEM="$(SLURM_COMPILE_MEM)" \
+		SLURM_COMPILE_TIME="$(SLURM_COMPILE_TIME)" \
+		SLURM_DRY_RUN="$(SLURM_DRY_RUN)" \
+		SLURM_PARTITION="$(SLURM_PARTITION)" \
+		SLURM_ACCOUNT="$(SLURM_ACCOUNT)" \
+		SLURM_QOS="$(SLURM_QOS)" \
+		./cpp/compile_slurm.sh "$(MODEL)"; \
+	else \
+		SLURM_COMPILE_CPUS="$(SLURM_COMPILE_CPUS)" \
+		SLURM_COMPILE_MEM="$(SLURM_COMPILE_MEM)" \
+		SLURM_COMPILE_TIME="$(SLURM_COMPILE_TIME)" \
+		SLURM_DRY_RUN="$(SLURM_DRY_RUN)" \
+		SLURM_PARTITION="$(SLURM_PARTITION)" \
+		SLURM_ACCOUNT="$(SLURM_ACCOUNT)" \
+		SLURM_QOS="$(SLURM_QOS)" \
+		./cpp/compile_slurm.sh "$(MODEL)" "$(COMPILE_TARGET)"; \
+	fi
+
+## Submit all C++ compile jobs to Slurm
+compile_all_slurm: ensure_env
+	@SLURM_COMPILE_CPUS="$(SLURM_COMPILE_CPUS)" \
+	SLURM_COMPILE_MEM="$(SLURM_COMPILE_MEM)" \
+	SLURM_COMPILE_TIME="$(SLURM_COMPILE_TIME)" \
+	SLURM_DRY_RUN="$(SLURM_DRY_RUN)" \
+	SLURM_PARTITION="$(SLURM_PARTITION)" \
+	SLURM_ACCOUNT="$(SLURM_ACCOUNT)" \
+	SLURM_QOS="$(SLURM_QOS)" \
+	./cpp/compile_slurm.sh --all
 
 # Clean targets ----
 
@@ -214,6 +258,11 @@ run_test_slurm:
 		SLURM_AGG_CPUS="$(SLURM_AGG_CPUS)" \
 		SLURM_AGG_MEM="$(SLURM_AGG_MEM)" \
 		SLURM_AGG_TIME="$(SLURM_AGG_TIME)" \
+		SLURM_COMPILE_CPUS="$(SLURM_COMPILE_CPUS)" \
+		SLURM_COMPILE_MEM="$(SLURM_COMPILE_MEM)" \
+		SLURM_COMPILE_TIME="$(SLURM_COMPILE_TIME)" \
+		SLURM_COMPILE_MODEL="$(SLURM_COMPILE_MODEL)" \
+		SLURM_COMPILE_TARGET="$(SLURM_COMPILE_TARGET)" \
 		./tests/run_tests_slurm.sh "$(TEST_SUITE)" "$(TEST_NAME)"; \
 	fi
 

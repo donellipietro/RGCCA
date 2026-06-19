@@ -17,7 +17,12 @@ Environment options:
   SLURM_MEM           Override memory
   SLURM_TIME          Override walltime
   SLURM_ARRAY_LIMIT   Limit concurrent array tasks, e.g. 20
-  SLURM_COMPILE       Compile all C++ models before submitting jobs (0/1)
+  SLURM_COMPILE       Submit C++ compilation before test jobs (0/1)
+  SLURM_COMPILE_MODEL Optional model to compile instead of --all
+  SLURM_COMPILE_TARGET Optional target for SLURM_COMPILE_MODEL
+  SLURM_COMPILE_CPUS  Compile job cpus-per-task
+  SLURM_COMPILE_MEM   Compile job memory
+  SLURM_COMPILE_TIME  Compile job walltime
   SLURM_AGGREGATE     Submit aggregate_results.R after all array tasks (0/1)
   SLURM_DRY_RUN       Print sbatch commands without submitting (0/1)
   SLURM_PARTITION     Optional Slurm partition
@@ -91,11 +96,6 @@ case "${RESOURCE_CLASS}" in
     exit 1
     ;;
 esac
-
-if is_truthy "${COMPILE_BEFORE_SUBMIT}"; then
-  echo "Compiling C++ models before Slurm submission..."
-  make compile_all TESTBENCH_PROFILE="${PROFILE}"
-fi
 
 echo "Preparing queue for ${TEST_SUITE}/${TEST_NAME} using profile ${PROFILE}..."
 Rscript src/init.R "${TEST_SUITE}" "${TEST_NAME}"
@@ -232,6 +232,45 @@ if ! is_truthy "${DRY_RUN}" && ! command -v sbatch >/dev/null 2>&1; then
   exit 1
 fi
 
+COMPILE_JOB_ID=""
+if is_truthy "${COMPILE_BEFORE_SUBMIT}"; then
+  COMPILE_ARGS=(--all)
+  if [[ -n "${SLURM_COMPILE_MODEL:-}" ]]; then
+    COMPILE_ARGS=("${SLURM_COMPILE_MODEL}")
+    if [[ -n "${SLURM_COMPILE_TARGET:-}" ]]; then
+      COMPILE_ARGS+=("${SLURM_COMPILE_TARGET}")
+    fi
+  fi
+
+  echo "Submitting C++ compilation before test jobs..."
+  if is_truthy "${DRY_RUN}"; then
+    SLURM_DRY_RUN="${DRY_RUN}" \
+    SLURM_COMPILE_CPUS="${SLURM_COMPILE_CPUS:-}" \
+    SLURM_COMPILE_MEM="${SLURM_COMPILE_MEM:-}" \
+    SLURM_COMPILE_TIME="${SLURM_COMPILE_TIME:-}" \
+    SLURM_PARTITION="${SLURM_PARTITION:-}" \
+    SLURM_ACCOUNT="${SLURM_ACCOUNT:-}" \
+    SLURM_QOS="${SLURM_QOS:-}" \
+      ./cpp/compile_slurm.sh "${COMPILE_ARGS[@]}"
+    COMPILE_JOB_ID="<compile_job_id>"
+  else
+    COMPILE_JOB_ID=$(SLURM_DRY_RUN="${DRY_RUN}" \
+      SLURM_COMPILE_CPUS="${SLURM_COMPILE_CPUS:-}" \
+      SLURM_COMPILE_MEM="${SLURM_COMPILE_MEM:-}" \
+      SLURM_COMPILE_TIME="${SLURM_COMPILE_TIME:-}" \
+      SLURM_PARTITION="${SLURM_PARTITION:-}" \
+      SLURM_ACCOUNT="${SLURM_ACCOUNT:-}" \
+      SLURM_QOS="${SLURM_QOS:-}" \
+        ./cpp/compile_slurm.sh --parsable "${COMPILE_ARGS[@]}")
+    echo "Submitted compile job: ${COMPILE_JOB_ID}"
+  fi
+fi
+
+RUN_DEPENDENCY_ARGS=()
+if [[ -n "${COMPILE_JOB_ID}" ]]; then
+  RUN_DEPENDENCY_ARGS=(--dependency="afterok:${COMPILE_JOB_ID}")
+fi
+
 echo "Submitting ${N_OPTIONS} option jobs (${RESOURCE_CLASS}: ${CPUS} CPUs, ${MEM}, ${TIME})..."
 echo "Manifest: ${MANIFEST}"
 
@@ -242,6 +281,7 @@ if is_truthy "${DRY_RUN}"; then
     --array="${ARRAY_SPEC}" \
     --output="${LOG_DIR}/${RUN_JOB_NAME}_%A_%a.out" \
     --error="${LOG_DIR}/${RUN_JOB_NAME}_%A_%a.err" \
+    "${RUN_DEPENDENCY_ARGS[@]}" \
     "${SBATCH_COMMON[@]}" \
     --wrap="${RUN_WRAP}"
 else
@@ -251,6 +291,7 @@ else
     --array="${ARRAY_SPEC}" \
     --output="${LOG_DIR}/${RUN_JOB_NAME}_%A_%a.out" \
     --error="${LOG_DIR}/${RUN_JOB_NAME}_%A_%a.err" \
+    "${RUN_DEPENDENCY_ARGS[@]}" \
     "${SBATCH_COMMON[@]}" \
     --wrap="${RUN_WRAP}")
 

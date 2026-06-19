@@ -4,28 +4,40 @@ set -euo pipefail
 usage() {
   cat <<'USAGE'
 Usage:
-  ./cpp/compile.sh <model_name>
+  ./cpp/compile.sh <model_name> [target]
   ./cpp/compile.sh --all
+
+Target can be an executable name, source file, or source stem:
+  fit_model_RGCCA
+  main_RGCCA.cpp
+  RGCCA
+
+Use target "all" to compile every main*.cpp in the model directory.
+If target is omitted, "all" is used.
 USAGE
 
   if [[ -n "${PATH_CPP:-}" && -d "${PATH_CPP}" ]]; then
     echo ""
-    echo "Available models:"
-    list_models | sed 's/^/- /'
+    echo "Available compile targets:"
+    list_models | while IFS= read -r model; do
+      list_targets_for_model "${model}" "shell"
+    done
   fi
 }
 
 usage_make() {
   cat <<'USAGE'
 Usage:
-  make compile MODEL=<model_name>
+  make compile MODEL=<model_name> [TARGET=<target>]
+  make compile MODEL=<model_name> TARGET=all
+  make compile_all
 
-Available models:
+Available compile targets:
 USAGE
 
   if [[ -n "${PATH_CPP:-}" && -d "${PATH_CPP}" ]]; then
     list_models | while IFS= read -r model; do
-      printf -- '- %s (make compile MODEL=%s)\n' "${model}" "${model}"
+      list_targets_for_model "${model}" "make"
     done
   fi
 }
@@ -176,11 +188,55 @@ binary_name_for_source() {
   esac
 }
 
+source_matches_target() {
+  local src="$1"
+  local target="$2"
+  local base stem bin
+
+  base="$(basename "${src}")"
+  bin="$(binary_name_for_source "${base}")"
+  stem="${base#main_}"
+  stem="${stem%.cpp}"
+
+  [[ "${target}" == "${base}" ||
+     "${target}" == "${bin}" ||
+     "${target}" == "${stem}" ]]
+}
+
+list_targets_for_model() {
+  local model="$1"
+  local style="${2:-make}"
+  local model_dir="${PATH_CPP}/${model}"
+  local mains src base bin stem
+
+  shopt -s nullglob
+  mains=("${model_dir}"/main*.cpp)
+
+  for src in "${mains[@]}"; do
+    base="$(basename "${src}")"
+    bin="$(binary_name_for_source "${base}")"
+    stem="${base#main_}"
+    stem="${stem%.cpp}"
+
+    case "${style}" in
+      shell)
+        printf -- '- %s: %s -> %s (./cpp/compile.sh %q %q)\n' \
+          "${model}" "${base}" "${bin}" "${model}" "${bin}"
+        ;;
+      *)
+        printf -- '- %s: %s -> %s (make compile MODEL=%s TARGET=%s)\n' \
+          "${model}" "${base}" "${bin}" "${model}" "${bin}"
+        ;;
+    esac
+  done
+}
+
 compile_model() {
   local model="$1"
+  local target="${2:-}"
   local model_dir="${PATH_CPP}/${model}"
   local build_dir="${PATH_BUILD}/${model}"
-  local mains src base bin out src_display out_display
+  local mains selected_mains src base bin out src_display out_display
 
   if [[ ! -d "${model_dir}" ]]; then
     echo "Error: model directory not found: ${model_dir}" >&2
@@ -194,14 +250,36 @@ compile_model() {
     exit 1
   fi
 
-  printf '\nCompiling mains in cpp/%s ...\n' "${model}"
+  if [[ -z "${target}" || "${target}" == "all" ]]; then
+    selected_mains=("${mains[@]}")
+  else
+    selected_mains=()
+    for src in "${mains[@]}"; do
+      if source_matches_target "${src}" "${target}"; then
+        selected_mains+=("${src}")
+      fi
+    done
+
+    if [[ "${#selected_mains[@]}" -eq 0 ]]; then
+      printf '\nUnknown compile target for cpp/%s: %s\n' "${model}" "${target}" >&2
+      printf 'Available targets:\n' >&2
+      list_targets_for_model "${model}" "make" >&2
+      exit 1
+    fi
+  fi
+
+  printf '\nCompiling mains in cpp/%s' "${model}"
+  if [[ -n "${target}" && "${target}" != "all" ]]; then
+    printf ' [%s]' "${target}"
+  fi
+  printf ' ...\n'
   "${CPP_DIR}/run.sh" --describe
   echo "Compiler: ${CXX:-g++}"
 
   mkdir -p "${build_dir}"
   compile_flags
 
-  for src in "${mains[@]}"; do
+  for src in "${selected_mains[@]}"; do
     base="$(basename "${src}")"
     bin="$(binary_name_for_source "${base}")"
     out="${build_dir}/${bin}"
@@ -252,7 +330,7 @@ case "${1:-}" in
 
     printf '\nCompiling all models in %s...\n' "$(display_path "${PATH_CPP}")"
     for model in "${models[@]}"; do
-      compile_model "${model}"
+      compile_model "${model}" "all"
     done
     printf 'All models compiled successfully.\n\n'
     ;;
@@ -261,6 +339,6 @@ case "${1:-}" in
     exit 1
     ;;
   *)
-    compile_model "$1"
+    compile_model "$1" "${2:-}"
     ;;
 esac

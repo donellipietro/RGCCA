@@ -55,6 +55,22 @@ On a Slurm cluster, submit one array task per generated JSON option file:
 make run_test_slurm TEST_SUITE=RGCCA-2D TEST_NAME=testResampling
 ```
 
+Compile C++ executables explicitly when a model folder contains multiple
+`main*.cpp` files:
+
+```bash
+make compile MODEL=RGCCA
+make compile MODEL=RGCCA TARGET=fit_model_RGCCA
+make compile MODEL=RGCCA TARGET=all
+```
+
+On the cluster, submit compilation to Slurm instead of running it on the login
+node:
+
+```bash
+make compile_slurm MODEL=RGCCA TARGET=fit_model_RGCCA SLURM_COMPILE_MEM=64GB
+```
+
 Useful Slurm options:
 
 ```bash
@@ -69,6 +85,10 @@ make run_test_slurm TEST_SUITE=RGCCA-2D TEST_NAME=testResampling SLURM_DRY_RUN=1
 
 # Compile C++ models before submission, using the selected profile/compiler setup
 make run_test_slurm TEST_SUITE=RGCCA-2D TEST_NAME=testResampling SLURM_COMPILE=1
+
+# Compile a specific executable before submission and make the array depend on it
+make run_test_slurm TEST_SUITE=RGCCA-IS-1D TEST_NAME=testMultivariate \
+  SLURM_COMPILE=1 SLURM_COMPILE_MODEL=RGCCA SLURM_COMPILE_TARGET=fit_model_RGCCA
 ```
 
 The runners export `OMP_NUM_THREADS=1`, `OPENBLAS_NUM_THREADS=1`, and

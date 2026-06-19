@@ -11,22 +11,23 @@ source("src/utils/config.R")
 TESTBENCH_CONFIG_PROFILES <- list(
   macbook = local({
     PATH_REPO <- "/Users/pietrodonelli/Documents/University/projects/RGCCA"
-    PATH_TMP <- file.path(PATH_REPO, "tmp")
+    PATH_OUTPUT <- "/Users/pietrodonelli/Documents/University/projects/RGCCA"
+    PATH_TMP <- file.path(PATH_OUTPUT, "tmp")
     PATH_FDAPDE_CPP <- "/Users/pietrodonelli/Documents/University/fdaPDE/fdaPDE-cpp"
 
     list(
       PATH_REPO = PATH_REPO,
 
       # Generated folders. Move these if you want outputs on another disk.
-      PATH_RESULTS = file.path(PATH_REPO, "results"),
-      PATH_IMAGES = file.path(PATH_REPO, "images"),
-      PATH_TEST_DATA = file.path(PATH_REPO, "data/tests"),
+      PATH_RESULTS = file.path(PATH_OUTPUT, "results"),
+      PATH_IMAGES = file.path(PATH_OUTPUT, "images"),
+      PATH_TEST_DATA = file.path(PATH_OUTPUT, "data/tests"),
       PATH_TMP = PATH_TMP,
       PATH_QUEUE = file.path(PATH_TMP, "queue"),
       PATH_LOGS = file.path(PATH_TMP, "logs"),
       PATH_TMP_DATA = file.path(PATH_TMP, "data"),
       PATH_TMP_RESULTS = file.path(PATH_TMP, "results"),
-      PATH_BUILD = file.path(PATH_REPO, "build"),
+      PATH_BUILD = file.path(PATH_OUTPUT, "build"),
 
       # Compiler
       CC = "/opt/homebrew/bin/gcc-15",
