@@ -3,6 +3,10 @@
 # - Desc: Generates JSON option files for test configurations.
 # = ========================================================================== =
 
+if (!exists("rgcca_model_options")) {
+  source("src/utils/rgcca_options.R")
+}
+
 ## Function: generate_options(test_suite, name_main_test, path_queue)
 # - Args:
 #   * test_suite: name of the calling test suite (used for directory structure)
@@ -78,7 +82,7 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
           n_locs_mult = c(3, 2, 2, 3),
           n_times = c(1200)
         ),
-        model_options = list(          
+        model_options = rgcca_model_options(
           n_comp = 3
         ),
         noise = list(
@@ -138,7 +142,7 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
           n_locs_mult = c(3, 2, 2, 3),
           n_times = c(1200)
         ),
-        model_options = list(          
+        model_options = rgcca_model_options(
           n_comp = 3,
           lambda_selection_weights = TRUE,
           n_bootstrap_samples = 100,

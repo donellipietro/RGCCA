@@ -5,14 +5,19 @@ using namespace fdapde;
 using nlohmann::json;
 
 #include <Eigen/Dense>
-#include <fstream>
+#include <algorithm>
+#include <cmath>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <limits>
 #include <variant>
 
 using matrix_t = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>;
 using vector_t = Eigen::Matrix<double, Eigen::Dynamic, 1>;
 using sparse_matrix_t = Eigen::SparseMatrix<double>;
+
+#include "../RGCCA/rgcca_driver_options.hpp"
 
 std::string resolve_path(const std::string& path) {
   if (std::filesystem::path(path).is_absolute()) {
@@ -51,25 +56,10 @@ int main(int argc, char* argv[]) {
   int n_comp = jroot["options"].value("n_comp", 3);
   double sd_noise = jroot["options"].value("sd_noise", 0.);
   double tau = jroot["options"].value("tau", 0.);
-  double lambda = jroot["options"].value("lambda", 1.);
-  bool non_negative_weights = jroot["options"].value("non_negative_weights", false);
   
   // Chose options
   RGCCA<TimeDependentSampling>::Options options;
-  
-  if (tau < 0.0) {
-    options.mode = Mode::Regularized;
-  } else if (tau > 0.5) {
-    options.mode = Mode::CovMax;
-  } else {
-    options.mode = Mode::CorMax;
-  }
-  
-  if(non_negative_weights) {
-    options.weight_sign_constraint = WeightSignConstraint::NonNegative;
-  } else {
-    options.weight_sign_constraint = WeightSignConstraint::None;
-  }
+  rgcca_driver::apply_rgcca_options(jroot["options"], options, tau);
   
   // Load time interval and grid
   Triangulation<1,1> I_T(path_mesh + "knots_T.csv", true, true);
@@ -112,15 +102,13 @@ int main(int argc, char* argv[]) {
     
   }
   
-  // Set lambda_l
-  rgcca.set_lambda_weights_all(lambda);
+  // Set regularization
+  rgcca_driver::apply_regularization_options(rgcca, jroot["options"], options);
   
   // Add connections
-  rgcca.connect(0,1);
-  rgcca.connect(0,2);
-  rgcca.connect(0,3);
-  rgcca.connect(1,3);
-  rgcca.connect(2,3);
+  if (!rgcca_driver::apply_connection_matrix(rgcca, jroot["options"], 4)) {
+    rgcca_driver::connect_reference_design(rgcca);
+  }
   
   // Fit
   const auto results = rgcca.fit();
@@ -143,7 +131,19 @@ int main(int argc, char* argv[]) {
   
   for(int h = 0; h < n_comp; h++) {
     write_csv(path_results + "objective"+ std::to_string(h+1) +".csv", results[h].obj_history);
+    write_csv(path_results + "covariance_matrix" + std::to_string(h + 1) + ".csv",
+              results[h].covariance_matrix);
+    write_csv(path_results + "correlation_matrix" + std::to_string(h + 1) + ".csv",
+              results[h].correlation_matrix);
+    write_csv(path_results + "tau" + std::to_string(h + 1) + ".csv",
+              results[h].tau_values);
+    write_csv(path_results + "lambda_components" + std::to_string(h + 1) + ".csv",
+              results[h].lambda_components_values);
+    write_csv(path_results + "lambda_weights" + std::to_string(h + 1) + ".csv",
+              results[h].lambda_weights_values);
   }
+
+  rgcca_driver::write_component_diagnostics(path_results, results);
   
   return 0;
 }

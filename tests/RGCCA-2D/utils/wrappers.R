@@ -7,6 +7,11 @@
 # = ========================================================================== =
 
 
+if (!exists("collect_cpp_model_options")) {
+  source("src/utils/rgcca_options.R")
+}
+
+
 ## Function: fit_model
 # - Desc:
 #   Dispatches to the appropriate model-fitting routine depending on `model_name`.
@@ -42,32 +47,6 @@ fit_model <- function(model_name, data, path_list, test_options) {
 }
 
 
-run_cpp_executable <- function(path_list, path_cpp_script, executable, file_name_params) {
-  runner <- normalizePath(file.path(path_list$cpp, "run.sh"), mustWork = TRUE)
-  status <- system2(
-    runner,
-    args = c(
-      "--workdir", path_cpp_script,
-      "--quiet",
-      "--",
-      paste0("./", executable),
-      file_name_params
-    ),
-    stdout = if (isTRUE(IGNORE_CPP_OUTPUT)) FALSE else "",
-    stderr = ""
-  )
-
-  if (!is.null(status) && !is.na(status) && status != 0) {
-    stop(
-      paste("C++ executable failed:", executable, "(exit status", status, ")"),
-      call. = FALSE
-    )
-  }
-
-  invisible(status)
-}
-
-
 R_RGCCA <- function(model_name, data, test_options) {
   
   ## Initialize empty model
@@ -92,7 +71,7 @@ R_RGCCA <- function(model_name, data, test_options) {
     method      = "rgcca",
     scale_block = FALSE,
     scale       = FALSE,
-    bias        = TRUE, test_options$model_options$bias,
+    bias        = as_option_bool(model_option(test_options, "bias", TRUE), TRUE),
     connection  = C,
     init        = "svd",
     superblock  = FALSE,
@@ -166,15 +145,15 @@ CPP_RGCCA <- function(model_name, data, test_options, path_list) {
   ## Info
   n_comp <- test_options$model_options$n_comp
   
-  lambda <- test_options$regularization$lambda
-  lambda_grid <- test_options$regularization$lambda_grid
+  lambda <- test_options$regularization$lambda %||% 0
+  lambda_grid <- test_options$regularization$lambda_grid %||% NULL
   if(model_name %in% c("CPP_GCCA_cor", "CPP_RGCCA", "CPP_GCCA_cov", "CPP_GCCA_NN_cor", "CPP_RGCCA_NN", "CPP_GCCA_NN_cov")){
     if(!is.na(lambda) && lambda != 0) { return() }
   } else {
     if(!is.na(lambda) && lambda == 0) { return() }
   }
   
-  non_negative_weights = FALSE
+  non_negative_weights <- FALSE
   switch (model_name,
           CPP_GCCA_cor = {tau = 0},
           CPP_fGCCA_cor = {tau = 0},
@@ -229,29 +208,29 @@ CPP_RGCCA <- function(model_name, data, test_options, path_list) {
   write.csv(format(data$domain_T$knots, digits = 16), paste0(path_tmp_mesh, "knots_T.csv"))
   
   ## Write JSON arguments for the C++ solver ----
-  lambda <- test_options$regularization$lambda
-  lambda_selection_weights <- test_options$model_options$lambda_selection_weights
+  lambda <- test_options$regularization$lambda %||% 0
+  lambda_selection_weights <- as_option_bool(model_option(test_options, "lambda_selection_weights", FALSE))
+  lambda_is_auto <- !is.na(lambda) && lambda < 0
+  lambda_selection_weights <- isTRUE(lambda_is_auto || lambda_selection_weights)
+  lambda_for_cpp <- if (lambda_is_auto) 1e-12 else ifelse(is.na(lambda), 0, lambda)
+  n_bootstrap_samples <- model_option(test_options, "n_bootstrap_samples", 0)
   cpp_script_arguments <- list()
   cpp_script_arguments$path_list <- list(
     mesh = path_tmp_mesh,
     data = path_tmp_data,
     results = path_tmp_results
   )
+  cpp_script_arguments$options <- collect_cpp_model_options(test_options$model_options)
   cpp_script_arguments$options$solver <- model_name
-  cpp_script_arguments$options$lambda <- test_options$regularization$lambda
+  cpp_script_arguments$options$lambda <- lambda_for_cpp
   cpp_script_arguments$options$n_obs <- data$dimensions$n_locs_T
   cpp_script_arguments$options$n_comp <- test_options$model_options$n_comp
   cpp_script_arguments$options$non_negative_weights <- non_negative_weights
   cpp_script_arguments$options$tau <- tau
-  lambda_selection_weights <- ifelse(lambda < 0 || lambda_selection_weights, TRUE, FALSE)
   cpp_script_arguments$options$lambda_selection_weights <- lambda_selection_weights
-  cpp_script_arguments$options$n_bootstrap_samples <- test_options$model_options$n_bootstrap_samples
+  cpp_script_arguments$options$n_bootstrap_samples <- n_bootstrap_samples
   cpp_script_arguments$options$lambda_grid <- lambda_grid
-  stationary_block_length <- test_options$model_options$stationary_block_length
-  if(test_options$model_options$resampling_strategy == "Ordinary" || stationary_block_length == 0) {
-    stationary_block_length <- 0
-  }
-  cpp_script_arguments$options$stationary_block_length <- stationary_block_length
+  cpp_script_arguments$options$connection <- connection_to_json(data$C)
 
   file_name_params <- paste0(
     test_options$name_test, "_", model_name, "_batch_",
@@ -393,14 +372,38 @@ CPP_RGCCA <- function(model_name, data, test_options, path_list) {
   model$model_traits$is_functional <- FALSE
   model$model_traits$has_interpolator <- FALSE
   
+  model$corr <- vector("list", length(n_comp))
+  model$results$active_connections <- vector("list", length(n_comp))
+  model$results$active_blocks <- vector("list", length(n_comp))
   for(h in 1:n_comp){
     objective_h <- as.matrix(read.csv(paste(path_tmp_results, "objective", h, ".csv", sep = "")))
     n_last <- length(objective_h)
     model$objective <- c(model$objective, objective_h[n_last])
+    model$corr[[h]] <- read_matrix_if_exists(
+      paste(path_tmp_results, "correlation_matrix", h, ".csv", sep = "")
+    )
+    model$results$active_connections[[h]] <- read_matrix_if_exists(
+      paste0(path_tmp_results, "active_connections", h, ".csv")
+    )
+    active_blocks_h <- read_matrix_if_exists(
+      paste0(path_tmp_results, "active_blocks", h, ".csv")
+    )
+    if (!is.null(active_blocks_h)) {
+      active_blocks_h <- as.logical(as.numeric(active_blocks_h[, 1]))
+    }
+    model$results$active_blocks[[h]] <- active_blocks_h
+  }
+
+  component_significance_path <- paste0(path_tmp_results, "component_significance.csv")
+  if (file.exists(component_significance_path)) {
+    model$results$component_significance <- as.matrix(read.csv(component_significance_path))
   }
   
   ## Load bootstrap selection results ----
-  if(lambda_selection_weights) {
+  model_selection <- lambda_selection_weights ||
+    as_option_bool(model_option(test_options, "block_deactivation", FALSE)) ||
+    as_option_bool(model_option(test_options, "connection_deactivation", FALSE))
+  if(model_selection) {
     bootstrap <- vector("list", n_comp)
     
     for(h in 1:n_comp) {
@@ -416,21 +419,38 @@ CPP_RGCCA <- function(model_name, data, test_options, path_list) {
         paste0(path_tmp_results, "bootstrap_lambda_opt", h, ".csv")
       )[1, 1])
       
-      w_fit_locs  <- vector("list", length(lambda_grid))
-      w_fit_grid  <- vector("list", length(lambda_grid))
+      w_fit_locs <- vector("list", length(lambda_grid))
+      if (grid_D) w_fit_grid <- vector("list", length(lambda_grid))
       w_boot_locs <- vector("list", length(lambda_grid))
-      w_boot_grid <- vector("list", length(lambda_grid))
-      w_min_locs  <- vector("list", length(lambda_grid))
-      w_min_grid  <- vector("list", length(lambda_grid))
+      if (grid_D) w_boot_grid <- vector("list", length(lambda_grid))
+      w_min_locs <- vector("list", length(lambda_grid))
+      if (grid_D) w_min_grid <- vector("list", length(lambda_grid))
+      w_ci_locs <- vector("list", length(lambda_grid))
+      if (grid_D) w_ci_grid <- vector("list", length(lambda_grid))
+      corr_min <- vector("list", length(lambda_grid))
+      corr_ci_low <- vector("list", length(lambda_grid))
+      corr_ci_high <- vector("list", length(lambda_grid))
       
       for(i in seq_along(lambda_grid)) {
         if(criterion[i]>=0) {
-          w_fit_locs[[i]]  <- vector("list", n_groups)
-          w_fit_grid[[i]]  <- vector("list", n_groups)
+          w_fit_locs[[i]] <- vector("list", n_groups)
+          if (grid_D) w_fit_grid[[i]] <- vector("list", n_groups)
           w_boot_locs[[i]] <- vector("list", n_groups)
-          w_boot_grid[[i]] <- vector("list", n_groups)
-          w_min_locs[[i]]  <- vector("list", n_groups)
-          w_min_grid[[i]]  <- vector("list", n_groups)
+          if (grid_D) w_boot_grid[[i]] <- vector("list", n_groups)
+          w_min_locs[[i]] <- vector("list", n_groups)
+          if (grid_D) w_min_grid[[i]] <- vector("list", n_groups)
+          w_ci_locs[[i]] <- vector("list", n_groups)
+          if (grid_D) w_ci_grid[[i]] <- vector("list", n_groups)
+
+          corr_min[[i]] <- read_matrix_if_exists(
+            paste0(path_tmp_results, "bootstrap_corr_min_comp", h, "_lambda", i, ".csv")
+          )
+          corr_ci_low[[i]] <- read_matrix_if_exists(
+            paste0(path_tmp_results, "bootstrap_corr_ci_low_comp", h, "_lambda", i, ".csv")
+          )
+          corr_ci_high[[i]] <- read_matrix_if_exists(
+            paste0(path_tmp_results, "bootstrap_corr_ci_high_comp", h, "_lambda", i, ".csv")
+          )
           
           for(g in 1:n_groups) {
             for(type in c("fit", "boot", "wmin")) {
@@ -443,34 +463,52 @@ CPP_RGCCA <- function(model_name, data, test_options, path_list) {
                        "_locs.csv")
               ))
               
-              W_grid <- as.matrix(read.csv(
-                paste0(path_tmp_results,
-                       "bootstrap_weights_", type,
-                       "_comp", h,
-                       "_lambda", i,
-                       "_block", g,
-                       "_grid.csv")
-              ))
+              if (grid_D) {
+                W_grid <- as.matrix(read.csv(
+                  paste0(path_tmp_results,
+                         "bootstrap_weights_", type,
+                         "_comp", h,
+                         "_lambda", i,
+                         "_block", g,
+                         "_grid.csv")
+                ))
+              }
               
               ## normalize column-wise using location norm
               if(type != "wmin") {
-                norms <- apply(W_locs, 2, norm_l2)
-                norms[is.na(norms) | norms == 0] <- 1
-                
-                W_locs <- sweep(W_locs, 2, norms, "/")
-                W_grid <- sweep(W_grid, 2, norms, "/")
+                # norms <- apply(W_locs, 2, norm_l2)
+                # norms[is.na(norms) | norms == 0] <- 1
+                # W_locs <- sweep(W_locs, 2, norms, "/")
+                # W_grid <- sweep(W_grid, 2, norms, "/")
               }
               
               if(type == "fit") {
                 w_fit_locs[[i]][[g]] <- W_locs
-                w_fit_grid[[i]][[g]] <- W_grid
+                if (grid_D) w_fit_grid[[i]][[g]] <- W_grid
               } else if(type == "boot") {
                 w_boot_locs[[i]][[g]] <- W_locs
-                w_boot_grid[[i]][[g]] <- W_grid
+                if (grid_D) w_boot_grid[[i]][[g]] <- W_grid
               } else if(type == "wmin") {
                 w_min_locs[[i]][[g]] <- W_locs
-                w_min_grid[[i]][[g]] <- W_grid
+                if (grid_D) w_min_grid[[i]][[g]] <- W_grid
               }
+            }
+
+            w_ci_locs[[i]][[g]] <- read_matrix_if_exists(
+              paste0(path_tmp_results,
+                     "bootstrap_weights_ci_comp", h,
+                     "_lambda", i,
+                     "_block", g,
+                     "_locs.csv")
+            )
+            if (grid_D) {
+              w_ci_grid[[i]][[g]] <- read_matrix_if_exists(
+                paste0(path_tmp_results,
+                       "bootstrap_weights_ci_comp", h,
+                       "_lambda", i,
+                       "_block", g,
+                       "_grid.csv")
+              )
             }
           }
         }
@@ -481,12 +519,17 @@ CPP_RGCCA <- function(model_name, data, test_options, path_list) {
         criterion = criterion,
         lambda_opt = lambda_opt,
         w_fit_locs = w_fit_locs,
-        w_fit_grid = w_fit_grid,
         w_boot_locs = w_boot_locs,
-        w_boot_grid = w_boot_grid,
         w_min_locs = w_min_locs,
-        w_min_grid = w_min_grid
+        w_ci_locs = w_ci_locs,
+        corr_min = corr_min,
+        corr_ci_low = corr_ci_low,
+        corr_ci_high = corr_ci_high
       )
+      if (grid_D) bootstrap[[h]]$w_fit_grid <- w_fit_grid
+      if (grid_D) bootstrap[[h]]$w_boot_grid <- w_boot_grid
+      if (grid_D) bootstrap[[h]]$w_min_grid <- w_min_grid
+      if (grid_D) bootstrap[[h]]$w_ci_grid <- w_ci_grid
     }
     
     model$results$bootstrap_selection <- bootstrap

@@ -14,6 +14,8 @@ using matrix_t = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>;
 using vector_t = Eigen::Matrix<double, Eigen::Dynamic, 1>;
 using sparse_matrix_t = Eigen::SparseMatrix<double>;
 
+#include "rgcca_driver_options.hpp"
+
 std::string resolve_path(const std::string &path) {
   if (std::filesystem::path(path).is_absolute()) {
     return path;
@@ -60,29 +62,14 @@ int main(int argc, char *argv[]) {
   int n_obs = jroot["options"].value("n_obs", 101);
   int n_comp = jroot["options"].value("n_comp", 3);
   double tau = jroot["options"].value("tau", 0.);
-  bool non_negative_weights =
-      jroot["options"].value("non_negative_weights", false);
 
   // Options
   RGCCA<IndependentSampling>::Options options;
   options.init_strategy = InitStrategy::SVD;
-  // options.block_deactivation = true;
-  // options.connection_deactivation = true;
-  // options.component_significance = true;
+  rgcca_driver::apply_rgcca_options(jroot["options"], options, tau);
 
-  if (tau < 0.0) {
-    options.mode = Mode::Regularized;
-  } else if (tau > 0.5) {
-    options.mode = Mode::CovMax;
-  } else {
-    options.mode = Mode::CorMax;
-  }
-
-  if (non_negative_weights) {
-    options.weight_sign_constraint = WeightSignConstraint::NonNegative;
-  } else {
-    options.weight_sign_constraint = WeightSignConstraint::None;
-  }
+  RGCCA<IndependentSampling>::BootstrapConfig bootstrap_config;
+  rgcca_driver::apply_bootstrap_options(jroot["options"], bootstrap_config);
 
   // Model initialization
   RGCCA<IndependentSampling> rgcca(n_obs, options, n_comp);
@@ -95,12 +82,15 @@ int main(int argc, char *argv[]) {
     rgcca.add_multivariate_block("X" + std::to_string(i), std::move(X));
   }
 
+  rgcca_driver::apply_regularization_options(rgcca, jroot["options"], options);
+
   // Add connections
-  rgcca.connect(0, 1);
-  rgcca.connect(0, 2);
-  rgcca.connect(0, 3);
-  rgcca.connect(1, 3);
-  rgcca.connect(2, 3);
+  if (!rgcca_driver::apply_connection_matrix(rgcca, jroot["options"], 4)) {
+    rgcca_driver::connect_reference_design(rgcca);
+  }
+
+  // Bootstrap
+  rgcca.set_bootstrap_config(bootstrap_config);
 
   // Fit
   const auto results = rgcca.fit();
@@ -145,9 +135,10 @@ int main(int argc, char *argv[]) {
               results[h].lambda_weights_values);
   }
 
+  rgcca_driver::write_component_diagnostics(path_results, results);
+
   // Save bootstrap lambda-selection results
-  if (options.block_deactivation || options.connection_deactivation ||
-      options.component_significance) {
+  if (rgcca_driver::bootstrap_selection_requested(options)) {
     const auto &boot_results = rgcca.bootstrap_selection_results();
 
     for (std::size_t h = 0; h < boot_results.size(); ++h) {

@@ -3,6 +3,10 @@
 # - Desc: Generates JSON option files for test configurations.
 # = ========================================================================== =
 
+if (!exists("rgcca_model_options")) {
+  source("src/utils/rgcca_options.R")
+}
+
 ## Function: generate_options(test_suite, name_main_test, path_queue)
 # - Args:
 #   * test_suite: name of the calling test suite (used for directory structure)
@@ -36,7 +40,7 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
     "GCCA - C++ - NN - cor", "RGCCA - C++ - NN", "GCCA - C++ - NN - cov",
     "fGCCA - NN - cor - FEM", "fRGCCA - NN - FEM", "fGCCA - NN - cov - FEM",
     "fGCCA - NN - cor - Splines", "fRGCCA - NN - Splines", "fGCCA - NN - cov - Splines",
-    "FGCCA - R - cov", "FGCCA - R - cor"
+    "FGCCA - R - cor", "FGCCA - R - cov"
   )
 
   ## Define the color palette
@@ -56,14 +60,13 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
 
   switch(name_main_test,
     testMultivariate = {
-      ## Set the desired options
       options <- list(
         model_names = model_names[c(1, 4, 2, 5, 3, 6)],
         model_labels = model_labels[c(1, 4, 2, 5, 3, 6)],
         model_colors = model_colors[c(1, 4, 2, 5, 3, 6)],
         cpp_script = "RGCCA",
         test_options = list(
-          n_reps = 3,
+          n_reps = 30,
           varying_options = c("n", "n_locs")
         ),
         domain_and_locations = list(
@@ -77,7 +80,7 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
           n = c(200, 300, 400),
           n_locs = c(101, 501) # primal & dual
         ),
-        model_options = list(
+        model_options = rgcca_model_options(
           n_comp = 3,
           lambda_selection_weights = FALSE,
           block_deactivation = FALSE,
@@ -117,7 +120,6 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
       )
     },
     testSensitivity = {
-      ## Set the desired options
       options <- list(
         model_names = model_names[c(6, 9, 12, 15, 18, 21)],
         model_labels = model_labels[c(6, 9, 12, 15, 18, 21)],
@@ -138,9 +140,12 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
           n = 1200,
           n_locs = 101
         ),
-        model_options = list(
+        model_options = rgcca_model_options(
           n_comp = 3,
           lambda_selection_weights = FALSE,
+          block_deactivation = FALSE,
+          connection_deactivation = FALSE,
+          component_significance = FALSE,
           n_bootstrap_samples = 100
         ),
         noise = list(
@@ -180,7 +185,6 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
       )
     },
     testBootstrap = {
-      ## Set the desired options
       options <- list(
         model_names = model_names[c(9, 12, 18, 21)],
         model_labels = model_labels[c(9, 12, 18, 21)],
@@ -201,10 +205,15 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
           n = 1200,
           n_locs = 101
         ),
-        model_options = list(
+        model_options = rgcca_model_options(
           n_comp = 3,
-          lambda_selection_weights = FALSE,
-          n_bootstrap_samples = c(10, 100, 500, 1000)
+          lambda_selection_weights = TRUE,
+          block_deactivation = TRUE,
+          connection_deactivation = TRUE,
+          component_significance = FALSE,
+          n_bootstrap_samples = c(10, 100, 500, 1000),
+          bootstrap_B_min = 10,
+          bootstrap_active_block_tol = 1e-3
         ),
         noise = list(
           sigma_noise = c(0.01, 1.0, 2.0, 3.0, 4.0, 5.0)
