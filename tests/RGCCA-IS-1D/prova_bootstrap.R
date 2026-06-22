@@ -161,8 +161,10 @@ test_options <- list(
   model_options = list(
     n_comp = 3,
     init = "Uniform",
-    lambda_selection_weights = TRUE,
-    n_bootstrap_samples = 5000
+    lambda_selection_weights = TRUE
+  ),
+  bootstrap_options = list(
+    save_bootstrap_resamples = TRUE
   ),
   noise = list(
     sigma_noise = 7
@@ -193,9 +195,9 @@ results <- fit_model("CPP_fGCCA_cov_FEM", data, path_list, test_options)
 if (test_options$model_options$lambda_selection_weights) {
   par(mfrow = c(n_comp, 1))
   for (h in 1:n_comp) {
-    lambda_grid <- results$results$bootstrap_selection[[h]]$lambda_grid
-    lambda_opt <- results$results$bootstrap_selection[[h]]$lambda_opt
-    index_lambda_opt <- which(lambda_opt == results$results$bootstrap_selection[[h]]$lambda_grid)
+    lambda_grid <- results$model_selection$bootstrap[[h]]$lambda_grid
+    lambda_opt <- results$model_selection$bootstrap[[h]]$lambda_opt
+    index_lambda_opt <- which(lambda_opt == results$model_selection$bootstrap[[h]]$lambda_grid)
 
     colors <- rep("black", length(lambda_grid))
     pch <- rep(1, length(lambda_grid))
@@ -205,10 +207,10 @@ if (test_options$model_options$lambda_selection_weights) {
 
     plot(
       log10(lambda_grid),
-      results$results$bootstrap_selection[[h]]$criterion,
+      results$model_selection$bootstrap[[h]]$criterion,
       ylab = "selection criterion", xlab = "log10(lambda)", main = glue("Comp. {h}"),
       type = "b",
-      ylim = c(0, max(results$results$bootstrap_selection[[h]]$criterion)),
+      ylim = c(0, max(results$model_selection$bootstrap[[h]]$criterion)),
       col = colors, pch = pch
     )
   }
@@ -217,16 +219,16 @@ if (test_options$model_options$lambda_selection_weights) {
 plot_list <- list()
 idx <- 1
 for (h in 1:n_comp) {
-  lambda_opt <- results$results$bootstrap_selection[[h]]$lambda_opt
-  index_lambda_opt <- which(lambda_opt == results$results$bootstrap_selection[[h]]$lambda_grid)
+  lambda_opt <- results$model_selection$bootstrap[[h]]$lambda_opt
+  index_lambda_opt <- which(lambda_opt == results$model_selection$bootstrap[[h]]$lambda_grid)
   for (g in 1:4) {
-    W_boot <- results$results$bootstrap_selection[[h]]$w_boot_grid[[index_lambda_opt]][[g]]
-    w_fit <- results$results$bootstrap_selection[[h]]$w_fit_grid[[index_lambda_opt]][[g]]
-    w_min <- results$results$bootstrap_selection[[h]]$w_min_grid[[index_lambda_opt]][[g]]
+    W_boot <- results$model_selection$bootstrap[[h]]$w_boot_grid[[index_lambda_opt]][[g]]
+    w_fit <- results$model_selection$bootstrap[[h]]$w_fit_grid[[index_lambda_opt]][[g]]
+    w_min <- results$model_selection$bootstrap[[h]]$w_min_grid[[index_lambda_opt]][[g]]
 
     w_fit_final <- results$results$A_hat_grid[[g]][, h]
 
-    conf_int <- results$results$bootstrap_selection[[h]]$w_ci_grid[[index_lambda_opt]][[g]]
+    conf_int <- results$model_selection$bootstrap[[h]]$w_ci_grid[[index_lambda_opt]][[g]]
 
     if (test_options$model_options$lambda_selection_weights) {
       plot_list[[idx]] <- plot.curve_bootstrap(
@@ -263,13 +265,13 @@ if (test_options$model_options$lambda_selection_weights) {
   idx <- 1
 
   for (h in 1:n_comp) {
-    lambda_opt <- results$results$bootstrap_selection[[h]]$lambda_opt
-    index_lambda_opt <- which(lambda_opt == results$results$bootstrap_selection[[h]]$lambda_grid)
+    lambda_opt <- results$model_selection$bootstrap[[h]]$lambda_opt
+    index_lambda_opt <- which(lambda_opt == results$model_selection$bootstrap[[h]]$lambda_grid)
 
-    est <- results$corr[[h]]
-    min <- results$results$bootstrap_selection[[h]]$corr_min[[index_lambda_opt]]
-    low <- results$results$bootstrap_selection[[h]]$corr_ci_low[[index_lambda_opt]]
-    upp <- results$results$bootstrap_selection[[h]]$corr_ci_high[[index_lambda_opt]]
+    est <- results$results$correlation_matrices[[h]]
+    min <- results$model_selection$bootstrap[[h]]$corr_min[[index_lambda_opt]]
+    low <- results$model_selection$bootstrap[[h]]$corr_ci_low[[index_lambda_opt]]
+    upp <- results$model_selection$bootstrap[[h]]$corr_ci_high[[index_lambda_opt]]
 
     mats <- list(low, est, upp, min)
 

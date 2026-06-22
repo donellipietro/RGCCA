@@ -55,19 +55,21 @@ test_options <- list(
   dimensions = list(
     n_groups = 4,
     n_nodes_T = c(51),
-    n_nodes_HR_grid_D = c(4*1e3, 2*1e3, 2*1e3, 4*1e3),
+    n_nodes_HR_grid_D = c(4 * 1e3, 2 * 1e3, 2 * 1e3, 4 * 1e3),
     n_nodes_HR_grid_T = 501,
     n_locs_D = c(800),
     n_locs_mult = c(3, 2, 2, 3),
     n_times = c(1200)
   ),
-  model_options = list(          
+  model_options = list(
     n_comp = n_comp,
     init = "Uniform",
-    lambda_selection_weights = TRUE,
-    n_bootstrap_samples = 5000,
+    lambda_selection_weights = TRUE
+  ),
+  bootstrap_options = list(
     resampling_strategy = "Stationary",
-    stationary_block_length = 0
+    stationary_block_length = 0,
+    save_bootstrap_resamples = TRUE
   ),
   noise = list(
     sigma_noise = 6
@@ -90,7 +92,7 @@ data <- generate_data(test_options, seed = 0)
 
 # model_name <- "CPP_GCCA_cov"
 # result <- CPP_RGCCA(model_name, data, test_options, path_list)
-# 
+#
 # model_name <- "CPP_fGCCA_cov"
 # result <- CPP_RGCCA(model_name, data, test_options, path_list)
 
@@ -99,21 +101,21 @@ model_name <- "CPP_fGCCA_NN_cov"
 results <- CPP_RGCCA(model_name, data, test_options, path_list)
 
 
-par(mfrow = c(n_comp,1))
-for(h in 1:n_comp) {
-  lambda_grid <- results$results$bootstrap_selection[[h]]$lambda_grid
-  lambda_opt <- results$results$bootstrap_selection[[h]]$lambda_opt
-  index_lambda_opt <- which(lambda_opt == results$results$bootstrap_selection[[h]]$lambda_grid)
-  
+par(mfrow = c(n_comp, 1))
+for (h in 1:n_comp) {
+  lambda_grid <- results$model_selection$bootstrap[[h]]$lambda_grid
+  lambda_opt <- results$model_selection$bootstrap[[h]]$lambda_opt
+  index_lambda_opt <- which(lambda_opt == results$model_selection$bootstrap[[h]]$lambda_grid)
+
   colors <- rep("black", length(lambda_grid))
   pch <- rep(1, length(lambda_grid))
   colors[index_lambda_opt] <- "darkgreen"
   pch[index_lambda_opt] <- 19
-  
-  
+
+
   plot(
-    log10(lambda_grid), 
-    results$results$bootstrap_selection[[h]]$criterion,
+    log10(lambda_grid),
+    results$model_selection$bootstrap[[h]]$criterion,
     ylab = "Score", xlab = "log10(lambda)", main = glue("Comp. {h}"),
     type = "b",
     col = colors, pch = pch
@@ -125,7 +127,7 @@ for(h in 1:n_comp) {
 # id <- 1
 # plot_list <- list()
 # for(g in 1:4) {
-#   for(h in 1:3) { 
+#   for(h in 1:3) {
 #     plot_list[[(g-1)*3 + h]] <- plot.field_tile(
 #       data$grid_D[[g]],
 #       results$results$A_hat_grid[[g]][,h],
@@ -141,59 +143,67 @@ plot_list_w_fit <- list()
 plot_list_w_fit_final <- list()
 plot_list_w_min <- list()
 idx <- 1
-for(h in 1:n_comp) {
-  lambda_opt <- results$results$bootstrap_selection[[h]]$lambda_opt
-  index_lambda_opt <- which(lambda_opt == results$results$bootstrap_selection[[h]]$lambda_grid)
-  
-  for(g in 1:4) {
-    W_boot <- results$results$bootstrap_selection[[h]]$w_boot_grid[[index_lambda_opt]][[g]]
-    w_fit  <- results$results$bootstrap_selection[[h]]$w_fit_grid[[index_lambda_opt]][[g]]
-    w_min  <- results$results$bootstrap_selection[[h]]$w_min_grid[[index_lambda_opt]][[g]]
+for (h in 1:n_comp) {
+  lambda_opt <- results$model_selection$bootstrap[[h]]$lambda_opt
+  index_lambda_opt <- which(lambda_opt == results$model_selection$bootstrap[[h]]$lambda_grid)
+
+  for (g in 1:4) {
+    W_boot <- results$model_selection$bootstrap[[h]]$w_boot_grid[[index_lambda_opt]][[g]]
+    w_fit <- results$model_selection$bootstrap[[h]]$w_fit_grid[[index_lambda_opt]][[g]]
+    w_min <- results$model_selection$bootstrap[[h]]$w_min_grid[[index_lambda_opt]][[g]]
     w_fit_final <- results$results$A_hat_grid[[g]][, h]
-    
-    if(max(abs(w_min)) < 1e-8) { w_min <- w_min * 0 }
-    
+
+    if (max(abs(w_min)) < 1e-8) {
+      w_min <- w_min * 0
+    }
+
     conf_int <- cbind(
       apply(W_boot, 1, quantile, probs = 0.025),
       apply(W_boot, 1, quantile, probs = 0.975)
     )
-    
+
     plot_list_w_fit[[idx]] <- plot.field_tile(
       data$grid_D[[g]],
       w_fit,
       boundary = data$domain_D[[g]]$boundary
     ) + std_plot_settings_fields()
-    
+
     plot_list_w_fit_final[[idx]] <- plot.field_tile(
       data$grid_D[[g]],
       w_fit_final,
       boundary = data$domain_D[[g]]$boundary
     ) + std_plot_settings_fields()
-    
+
     plot_list_w_min[[idx]] <- plot.field_tile(
       data$grid_D[[g]],
       w_min,
       boundary = data$domain_D[[g]]$boundary
     ) + std_plot_settings_fields()
-    idx <- idx +1
+    idx <- idx + 1
   }
 }
 plot <- arrangeGrob(grobs = plot_list_w_fit, nrow = n_comp)
-plot <- labled_plots_grid(plot, title = "Weights",
-                          labels_cols = paste("Block", 1:4),
-                          labels_rows = paste("Comp", 1:n_comp))
+plot <- labled_plots_grid(plot,
+  title = "Weights",
+  labels_cols = paste("Block", 1:4),
+  labels_rows = paste("Comp", 1:n_comp)
+)
 grid.arrange(plot)
 
 plot <- arrangeGrob(grobs = plot_list_w_fit_final, nrow = n_comp)
-plot <- labled_plots_grid(plot, title = "Weights final",
-                          labels_cols = paste("Block", 1:4),
-                          labels_rows = paste("Comp", 1:n_comp))
+plot <- labled_plots_grid(plot,
+  title = "Weights final",
+  labels_cols = paste("Block", 1:4),
+  labels_rows = paste("Comp", 1:n_comp)
+)
 grid.arrange(plot)
 
 plot <- arrangeGrob(grobs = plot_list_w_min, nrow = n_comp)
-plot <- labled_plots_grid(plot, title = "Min. envelope",
-                          labels_cols = paste("Block", 1:4),
-                          labels_rows = paste("Comp", 1:n_comp))
+plot <- labled_plots_grid(plot,
+  title = "Min. envelope",
+  labels_cols = paste("Block", 1:4),
+  labels_rows = paste("Comp", 1:n_comp)
+)
 grid.arrange(plot)
 
 
@@ -203,8 +213,8 @@ grid.arrange(plot)
 # test_options$regularization$lambda <- 0
 # model_name <- "CPP_GCCA_cov"
 # results_MV <- CPP_RGCCA(model_name, data, test_options, path_list)
-# 
-# 
+#
+#
 # plot_list <- list()
 # idx <- 1
 # for(h in 1:n_comp) {
@@ -223,4 +233,4 @@ grid.arrange(plot)
 #                           labels_cols = paste("Block", 1:4),
 #                           labels_rows = paste("Comp", 1:n_comp))
 # grid.arrange(plot)
-# 
+#

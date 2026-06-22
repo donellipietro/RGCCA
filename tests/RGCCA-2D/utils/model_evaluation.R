@@ -22,7 +22,7 @@ evaluate_results <- function(model, data) {
   lambdas <- list()
   
   ## Execution time ----
-  execution_time <- model$results$execution_time
+  execution_time <- model$diagnostics$execution_time
   
   ## Lambdas ----
   # lambda <- model$results$lambda
@@ -72,7 +72,8 @@ evaluate_results <- function(model, data) {
   
   return(list(
     execution_time = execution_time,
-    lambdas = lambdas,
+    lambdas = model$model_selection$lambda_weights %||% c(),
+    objective = model$diagnostics$component_diagnostics$objective %||% c(),
     rmse = rmse,
     irmse = irmse
   ))

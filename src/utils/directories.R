@@ -103,6 +103,11 @@ create_paths <- function(test_suite) {
 #   test. Creates result and image subdirectories accordingly and
 #   returns the updated path list.
 update_paths <- function(path_list, name_main_test, test_options) {
+  name_test <- test_options$name_test
+  if (is.null(name_test) || length(name_test) == 0 || !nzchar(name_test[1])) {
+    name_test <- name_main_test
+  }
+
   for (ext in c("images", "data")) {
     path <- path_list[[ext]]
     path <- config_path(path, name_main_test)
@@ -114,7 +119,7 @@ update_paths <- function(path_list, name_main_test, test_options) {
     path <- path_list[[ext]]
     path <- config_path(path, name_main_test)
     mkdir(path)
-    path <- config_path(path, test_options$name_test)
+    path <- config_path(path, name_test)
     mkdir(path)
     path_list[[ext]] <- path
   }

@@ -51,11 +51,11 @@ biased_cov <- function(u, v) {
 corr_from_eta <- function(eta_j, eta_k) {
   var_j <- biased_cov(eta_j, eta_j)
   var_k <- biased_cov(eta_k, eta_k)
-  
+
   if (var_j <= 0 || var_k <= 0) {
     return(0)
   }
-  
+
   biased_cov(eta_j, eta_k) / sqrt(var_j * var_k)
 }
 
@@ -64,33 +64,33 @@ corr_ci_from_boot <- function(w_boot_locs, X_blocks, conf.level = 0.95) {
   eps <- 1e-12
   J <- length(w_boot_locs)
   B <- ncol(w_boot_locs[[1]])
-  
+
   lower <- diag(1, J)
   upper <- diag(1, J)
-  
+
   eta <- vector("list", J)
   for (j in seq_len(J)) {
     eta[[j]] <- X_blocks[[j]] %*% w_boot_locs[[j]]
   }
-  
+
   for (j in seq_len(J - 1)) {
     for (k in (j + 1):J) {
       z_values <- numeric(B)
-      
+
       for (b in seq_len(B)) {
         corr <- corr_from_eta(eta[[j]][, b], eta[[k]][, b])
         corr <- min(max(corr, -1 + eps), 1 - eps)
         z_values[b] <- atanh(corr)
       }
-      
+
       z_low <- quantile(z_values, probs = alpha, na.rm = TRUE, names = FALSE, type = 7)
       z_high <- quantile(z_values, probs = 1 - alpha, na.rm = TRUE, names = FALSE, type = 7)
-      
+
       lower[j, k] <- lower[k, j] <- tanh(z_low)
       upper[j, k] <- upper[k, j] <- tanh(z_high)
     }
   }
-  
+
   list(lower = lower, upper = upper)
 }
 
@@ -102,23 +102,23 @@ load_raw_components <- function(path_tmp_results, n_groups) {
 
 deflated_blocks_for_component <- function(data, raw_components, component) {
   X_blocks <- data$X
-  
+
   if (component <= 1) {
     return(X_blocks)
   }
-  
+
   for (h in seq_len(component - 1)) {
     for (g in seq_along(X_blocks)) {
       y <- raw_components[[g]][, h]
       yy <- sum(y^2)
-      
+
       if (is.finite(yy) && yy > 0) {
         p <- as.vector(t(X_blocks[[g]]) %*% y / yy)
         X_blocks[[g]] <- X_blocks[[g]] - tcrossprod(y, p)
       }
     }
   }
-  
+
   X_blocks
 }
 
@@ -170,11 +170,6 @@ compare_ci <- function(r_ci, cpp_ci, component, block, lambda_index, lambda, sca
   )
 }
 
-bootstrap_samples <- as.integer(Sys.getenv("RGCCA_CI_N_BOOTSTRAP", "5000"))
-if (is.na(bootstrap_samples) || bootstrap_samples <= 0) {
-  stop("RGCCA_CI_N_BOOTSTRAP must be a positive integer.")
-}
-
 test_options <- list(
   name_test = "prova_CI",
   batch_index = 1,
@@ -196,8 +191,10 @@ test_options <- list(
   model_options = list(
     n_comp = 3,
     init = "Uniform",
-    lambda_selection_weights = TRUE,
-    n_bootstrap_samples = bootstrap_samples
+    lambda_selection_weights = TRUE
+  ),
+  bootstrap_options = list(
+    save_bootstrap_resamples = TRUE
   ),
   noise = list(
     sigma_noise = 5
@@ -222,8 +219,8 @@ raw_components <- load_raw_components(path_list$tmp_results, test_options$dimens
 summary_rows <- list()
 idx <- 1
 
-for (h in seq_along(results$results$bootstrap_selection)) {
-  boot <- results$results$bootstrap_selection[[h]]
+for (h in seq_along(results$model_selection$bootstrap)) {
+  boot <- results$model_selection$bootstrap[[h]]
   lambda_index <- which.min(abs(boot$lambda_grid - boot$lambda_opt))
   lambda <- boot$lambda_grid[lambda_index]
   X_corr <- deflated_blocks_for_component(data, raw_components, h)
@@ -250,9 +247,9 @@ for (h in seq_along(results$results$bootstrap_selection)) {
     )
     idx <- idx + 1
   }
-  
+
   r_corr_ci <- corr_ci_from_boot(boot$w_boot_locs[[lambda_index]], X_corr)
-  
+
   summary_rows[[idx]] <- compare_ci(
     r_corr_ci$lower,
     boot$corr_ci_low[[lambda_index]],
@@ -261,7 +258,7 @@ for (h in seq_along(results$results$bootstrap_selection)) {
     "cpp_fdapde_corr_ci"
   )
   idx <- idx + 1
-  
+
   summary_rows[[idx]] <- compare_ci(
     r_corr_ci$upper,
     boot$corr_ci_high[[lambda_index]],

@@ -16,7 +16,7 @@ generate_data <- function(test_options, seed = 0) {
     stop("a_gen: unknown id")
   }
 
-  ## Define the design matrix ----
+  ## Define the default C matrix ----
   C <- matrix(c(
     0, 1, 1, 1,
     1, 0, 0, 1,

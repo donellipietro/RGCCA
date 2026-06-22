@@ -3,7 +3,8 @@
 # - Desc: Generates JSON option files for test configurations.
 # = ========================================================================== =
 
-if (!exists("rgcca_model_options")) {
+if (!exists("rgcca_model_options") ||
+    !exists("rgcca_bootstrap_options")) {
   source("src/utils/rgcca_options.R")
 }
 
@@ -84,9 +85,9 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
           n_comp = 3,
           lambda_selection_weights = FALSE,
           block_deactivation = FALSE,
-          connection_deactivation = FALSE,
-          n_bootstrap_samples = 0
+          connection_deactivation = FALSE
         ),
+        bootstrap_options = rgcca_bootstrap_options(),
         noise = list(
           sigma_noise = 1
         ),
@@ -145,9 +146,9 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
           lambda_selection_weights = FALSE,
           block_deactivation = FALSE,
           connection_deactivation = FALSE,
-          component_significance = FALSE,
-          n_bootstrap_samples = 100
+          component_significance = FALSE
         ),
+        bootstrap_options = rgcca_bootstrap_options(),
         noise = list(
           sigma_noise = c(0.01, 1.0, 2.0, 3.0, 4.0, 5.0)
         ),
@@ -192,7 +193,7 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
         cpp_script = "RGCCA",
         test_options = list(
           n_reps = 30,
-          varying_options = c("n_bootstrap_samples", "sigma_noise")
+          varying_options = c("B_max", "sigma_noise")
         ),
         domain_and_locations = list(
           name_mesh = "unit_interval",
@@ -210,10 +211,12 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
           lambda_selection_weights = TRUE,
           block_deactivation = TRUE,
           connection_deactivation = TRUE,
-          component_significance = FALSE,
-          n_bootstrap_samples = c(10, 100, 500, 1000),
-          bootstrap_B_min = 10,
-          bootstrap_active_block_tol = 1e-3
+          component_significance = FALSE
+        ),
+        bootstrap_options = rgcca_bootstrap_options(
+          B_max = c(10, 100, 500, 1000),
+          B_min = 10,
+          active_block_tol = 1e-3
         ),
         noise = list(
           sigma_noise = c(0.01, 1.0, 2.0, 3.0, 4.0, 5.0)
@@ -231,7 +234,7 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
         paste(
           name_main_test,
           ## Include all the varying options!
-          "nbs", sprintf("%.0f", comb_row$n_bootstrap_samples),
+          "nbs", sprintf("%04d", comb_row$B_max),
           "sd", sprintf("%.3f", comb_row$sigma_noise),
           sep = "_"
         )

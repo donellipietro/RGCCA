@@ -90,16 +90,6 @@ split_flags() {
   fi
 }
 
-add_if_set() {
-  local -n target="$1"
-  local prefix="$2"
-  local value="$3"
-
-  if [[ -n "${value}" ]]; then
-    target+=("${prefix}${value}")
-  fi
-}
-
 display_path() {
   local path="$1"
 
@@ -112,16 +102,33 @@ display_path() {
   fi
 }
 
+ensure_ipopt_options() {
+  local build_dir="$1"
+  local src="${PATH_CPP}/ipopt.opt"
+  local dst="${build_dir}/ipopt.opt"
+
+  [[ -f "${src}" ]] || return 0
+
+  if [[ -L "${dst}" ]]; then
+    ln -sfn "${src}" "${dst}"
+  elif [[ -e "${dst}" ]]; then
+    echo "Warning: $(display_path "${dst}") exists and is not a symlink; leaving it unchanged." >&2
+  else
+    ln -s "${src}" "${dst}"
+  fi
+}
+
 compile_flags() {
   local eigen_compat_header="${PATH_CPP}/include/eigen_compat.h"
   local eigen_compat_flags=()
   local configured_flags
+  local flag
 
   include_flags=()
-  add_if_set include_flags "-I" "${PATH_FDAPDE_CPP:-}"
-  add_if_set include_flags "-I" "${PATH_FDAPDE_CORE:-}"
-  add_if_set include_flags "-I" "${PATH_IPOPT_INCLUDE:-}"
-  add_if_set include_flags "-I" "${PATH_EIGEN_INCLUDE:-}"
+  [[ -n "${PATH_FDAPDE_CPP:-}" ]] && include_flags+=("-I${PATH_FDAPDE_CPP}")
+  [[ -n "${PATH_FDAPDE_CORE:-}" ]] && include_flags+=("-I${PATH_FDAPDE_CORE}")
+  [[ -n "${PATH_IPOPT_INCLUDE:-}" ]] && include_flags+=("-I${PATH_IPOPT_INCLUDE}")
+  [[ -n "${PATH_EIGEN_INCLUDE:-}" ]] && include_flags+=("-I${PATH_EIGEN_INCLUDE}")
 
   if [[ -n "${CXXFLAGS:-}" ]]; then
     split_flags "${CXXFLAGS}"
@@ -151,14 +158,27 @@ compile_flags() {
     )
   fi
 
-  cxx_flags=("${configured_flags[@]}" "${include_flags[@]}" "${eigen_compat_flags[@]}")
+  cxx_flags=()
+  for flag in "${configured_flags[@]}"; do
+    cxx_flags+=("${flag}")
+  done
+  if [[ "${#include_flags[@]}" -gt 0 ]]; then
+    for flag in "${include_flags[@]}"; do
+      cxx_flags+=("${flag}")
+    done
+  fi
+  if [[ "${#eigen_compat_flags[@]}" -gt 0 ]]; then
+    for flag in "${eigen_compat_flags[@]}"; do
+      cxx_flags+=("${flag}")
+    done
+  fi
 
   if [[ -n "${LDFLAGS:-}" ]]; then
     split_flags "${LDFLAGS}"
     ld_flags=("${SPLIT_FLAGS_RESULT[@]}")
   else
     ld_flags=()
-    add_if_set ld_flags "-L" "${PATH_IPOPT_LIB:-}"
+    [[ -n "${PATH_IPOPT_LIB:-}" ]] && ld_flags+=("-L${PATH_IPOPT_LIB}")
   fi
 
   if [[ -n "${LDLIBS:-}" ]]; then
@@ -231,6 +251,17 @@ list_targets_for_model() {
   done
 }
 
+headers_newer_than() {
+  local out="$1"
+  local newer
+
+  newer="$(
+    find "${PATH_CPP}" -type f \( -name '*.h' -o -name '*.hpp' \) \
+      -newer "${out}" -print -quit
+  )"
+  [[ -n "${newer}" ]]
+}
+
 compile_model() {
   local model="$1"
   local target="${2:-}"
@@ -277,6 +308,7 @@ compile_model() {
   echo "Compiler: ${CXX:-g++}"
 
   mkdir -p "${build_dir}"
+  ensure_ipopt_options "${build_dir}"
   compile_flags
 
   for src in "${selected_mains[@]}"; do
@@ -284,18 +316,26 @@ compile_model() {
     bin="$(binary_name_for_source "${base}")"
     out="${build_dir}/${bin}"
 
-    if [[ ! -f "${out}" || "${src}" -nt "${out}" ]]; then
+    if [[ ! -f "${out}" || "${src}" -nt "${out}" ]] ||
+        headers_newer_than "${out}"; then
       src_display="$(display_path "${src}")"
       out_display="$(display_path "${out}")"
       echo "- ${src_display}  ==>  ${out_display}"
-      cmd=(
-        "${CXX:-g++}" \
-        "${cxx_flags[@]}" \
-        -o "${out}" \
-        "${src}" \
-        "${ld_flags[@]}" \
-        "${ld_libs[@]}"
-      )
+      cmd=("${CXX:-g++}")
+      for flag in "${cxx_flags[@]}"; do
+        cmd+=("${flag}")
+      done
+      cmd+=(-o "${out}" "${src}")
+      if [[ "${#ld_flags[@]}" -gt 0 ]]; then
+        for flag in "${ld_flags[@]}"; do
+          cmd+=("${flag}")
+        done
+      fi
+      if [[ "${#ld_libs[@]}" -gt 0 ]]; then
+        for flag in "${ld_libs[@]}"; do
+          cmd+=("${flag}")
+        done
+      fi
       "${CPP_DIR}/run.sh" --quiet -- "${cmd[@]}"
     else
       echo "- $(display_path "${out}") is up to date"
@@ -322,7 +362,10 @@ case "${1:-}" in
     exit 0
     ;;
   --all)
-    mapfile -t models < <(list_models)
+    models=()
+    while IFS= read -r model; do
+      models+=("${model}")
+    done < <(list_models)
     if [[ "${#models[@]}" -eq 0 ]]; then
       echo "No models with main*.cpp found in ${PATH_CPP}" >&2
       exit 1

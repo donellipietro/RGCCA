@@ -34,7 +34,7 @@ generate_data <- function(test_options, seed = 0) {
     sin(2 * pi * f_hz * t)
   }
   
-  ## Define the design matrix ----
+  ## Define the default C matrix ----
   C <- matrix(c(
     0,1,1,1,
     1,0,0,1,

@@ -164,8 +164,10 @@ test_options <- list(
     lambda_selection_weights = FALSE,
     block_deactivation = TRUE,
     connection_deactivation = TRUE,
-    n_bootstrap_samples = 5000,
     component_significance = TRUE
+  ),
+  bootstrap_options = list(
+    save_bootstrap_resamples = TRUE
   ),
   noise = list(
     sigma_noise = 2
@@ -196,13 +198,13 @@ idx <- 1
 for (h in 1:n_comp) {
   index_lambda_opt <- 1
   for (g in 1:4) {
-    W_boot <- results$results$bootstrap_selection[[h]]$w_boot_locs[[index_lambda_opt]][[g]]
-    w_fit <- results$results$bootstrap_selection[[h]]$w_fit_locs[[index_lambda_opt]][[g]]
-    w_min <- results$results$bootstrap_selection[[h]]$w_min_locs[[index_lambda_opt]][[g]]
+    W_boot <- results$model_selection$bootstrap[[h]]$w_boot_locs[[index_lambda_opt]][[g]]
+    w_fit <- results$model_selection$bootstrap[[h]]$w_fit_locs[[index_lambda_opt]][[g]]
+    w_min <- results$model_selection$bootstrap[[h]]$w_min_locs[[index_lambda_opt]][[g]]
 
     w_fit_final <- results$results$A_hat_locs[[g]][, h]
 
-    conf_int <- results$results$bootstrap_selection[[h]]$w_ci_locs[[index_lambda_opt]][[g]]
+    conf_int <- results$model_selection$bootstrap[[h]]$w_ci_locs[[index_lambda_opt]][[g]]
 
     if (model_selection) {
       plot_list[[idx]] <- plot.curve_bootstrap(
@@ -237,25 +239,25 @@ grid.arrange(plot)
 # if (model_selection) {
 #   plot_list <- list()
 #   idx <- 1
-# 
+#
 #   for (h in 1:n_comp) {
 #     index_lambda_opt <- 1
-# 
-#     est <- results$corr[[h]]
-#     min <- results$results$bootstrap_selection[[h]]$corr_min[[index_lambda_opt]]
-#     low <- results$results$bootstrap_selection[[h]]$corr_ci_low[[index_lambda_opt]]
-#     upp <- results$results$bootstrap_selection[[h]]$corr_ci_high[[index_lambda_opt]]
-# 
+#
+#     est <- results$results$correlation_matrices[[h]]
+#     min <- results$model_selection$bootstrap[[h]]$corr_min[[index_lambda_opt]]
+#     low <- results$model_selection$bootstrap[[h]]$corr_ci_low[[index_lambda_opt]]
+#     upp <- results$model_selection$bootstrap[[h]]$corr_ci_high[[index_lambda_opt]]
+#
 #     mats <- list(low, est, upp, min)
-# 
+#
 #     for (m in 1:length(mats)) {
 #       df <- expand.grid(
 #         x = 1:ncol(mats[[m]]),
 #         y = 1:nrow(mats[[m]])
 #       )
-# 
+#
 #       df$value <- as.vector(mats[[m]])
-# 
+#
 #       p <- ggplot(df, aes(x, y, fill = value)) +
 #         geom_tile() +
 #         geom_text(aes(label = round(value, 2)), size = 3) +
@@ -276,18 +278,18 @@ grid.arrange(plot)
 #           panel.grid = element_blank(),
 #           plot.title = element_text(hjust = 0.5)
 #         )
-# 
+#
 #       plot_list[[idx]] <- p
 #       idx <- idx + 1
 #     }
 #   }
-# 
+#
 #   plot <- arrangeGrob(grobs = plot_list, ncol = 4)
 #   plot <- labled_plots_grid(plot,
 #     title = "Correlation matrices CI",
 #     labels_cols = c("Lower", "Estimate", "Upper", "Corrected"), # c("True", "Lower", "Estimate", "Upper"),
 #     labels_rows = paste("Comp", 1:n_comp)
 #   )
-# 
+#
 #   grid.arrange(plot)
 # }

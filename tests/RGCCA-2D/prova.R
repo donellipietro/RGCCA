@@ -64,6 +64,7 @@ test_options <- list(
   model_options = list(          
     n_comp = 3
   ),
+  bootstrap_options = list(),
   noise = list(
     sigma_noise = 1
   ),

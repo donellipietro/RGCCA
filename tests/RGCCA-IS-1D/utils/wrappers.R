@@ -7,7 +7,8 @@
 # = ========================================================================== =
 
 
-if (!exists("collect_cpp_model_options")) {
+if (!exists("collect_cpp_model_options") ||
+    !exists("effective_rgcca_model_options")) {
   source("src/utils/rgcca_options.R")
 }
 
@@ -17,57 +18,68 @@ if (!exists("collect_cpp_model_options")) {
 #   Dispatches to the appropriate model-fitting routine depending on `model_name`.
 fit_model <- function(model_name, data, path_list, test_options) {
   switch(model_name,
-         R_GCCA_cor = return(R_RGCCA(model_name, data, test_options)),
-         R_RGCCA = return(R_RGCCA(model_name, data, test_options)),
-         R_GCCA_cov = return(R_RGCCA(model_name, data, test_options)),
-         R_FGCCA_cor = return(R_FGCCA(model_name, data, test_options)),
-         R_FGCCA_cov = return(R_FGCCA(model_name, data, test_options)),
-         CPP_GCCA_cor = return(CPP_RGCCA(model_name, data, test_options, path_list)),
-         CPP_RGCCA = return(CPP_RGCCA(model_name, data, test_options, path_list)),
-         CPP_GCCA_cov = return(CPP_RGCCA(model_name, data, test_options, path_list)),
-         CPP_GCCA_NN_cor = return(CPP_RGCCA(model_name, data, test_options, path_list)),
-         CPP_RGCCA_NN = return(CPP_RGCCA(model_name, data, test_options, path_list)),
-         CPP_GCCA_NN_cov = return(CPP_RGCCA(model_name, data, test_options, path_list)),
-         CPP_fGCCA_cor_FEM = return(CPP_RGCCA(model_name, data, test_options, path_list)),
-         CPP_fRGCCA_FEM = return(CPP_RGCCA(model_name, data, test_options, path_list)),
-         CPP_fGCCA_cov_FEM = return(CPP_RGCCA(model_name, data, test_options, path_list)),
-         CPP_fGCCA_NN_cor_FEM = return(CPP_RGCCA(model_name, data, test_options, path_list)),
-         CPP_fRGCCA_NN_FEM = return(CPP_RGCCA(model_name, data, test_options, path_list)),
-         CPP_fGCCA_NN_cov_FEM = return(CPP_RGCCA(model_name, data, test_options, path_list)),
-         CPP_fGCCA_cor_SPLINES = return(CPP_RGCCA(model_name, data, test_options, path_list)),
-         CPP_fRGCCA_SPLINES = return(CPP_RGCCA(model_name, data, test_options, path_list)),
-         CPP_fGCCA_cov_SPLINES = return(CPP_RGCCA(model_name, data, test_options, path_list)),
-         CPP_fGCCA_NN_cor_SPLINES = return(CPP_RGCCA(model_name, data, test_options, path_list)),
-         CPP_fRGCCA_NN_SPLINES = return(CPP_RGCCA(model_name, data, test_options, path_list)),
-         CPP_fGCCA_NN_cov_SPLINES = return(CPP_RGCCA(model_name, data, test_options, path_list)),
-         CPP_tfRGCCA = return(CPP_RGCCA(model_name, data, test_options, path_list)),
-         {
-           stop(paste("The model", model_name, "does not exist"))
-         }
+    R_GCCA_cor = return(R_RGCCA(model_name, data, test_options)),
+    R_RGCCA = return(R_RGCCA(model_name, data, test_options)),
+    R_GCCA_cov = return(R_RGCCA(model_name, data, test_options)),
+    R_FGCCA_cor = return(R_FGCCA(model_name, data, test_options)),
+    R_FGCCA_cov = return(R_FGCCA(model_name, data, test_options)),
+    CPP_GCCA_cor = return(CPP_RGCCA(model_name, data, test_options, path_list)),
+    CPP_RGCCA = return(CPP_RGCCA(model_name, data, test_options, path_list)),
+    CPP_GCCA_cov = return(CPP_RGCCA(model_name, data, test_options, path_list)),
+    CPP_GCCA_NN_cor = return(CPP_RGCCA(model_name, data, test_options, path_list)),
+    CPP_RGCCA_NN = return(CPP_RGCCA(model_name, data, test_options, path_list)),
+    CPP_GCCA_NN_cov = return(CPP_RGCCA(model_name, data, test_options, path_list)),
+    CPP_fGCCA_cor_FEM = return(CPP_RGCCA(model_name, data, test_options, path_list)),
+    CPP_fRGCCA_FEM = return(CPP_RGCCA(model_name, data, test_options, path_list)),
+    CPP_fGCCA_cov_FEM = return(CPP_RGCCA(model_name, data, test_options, path_list)),
+    CPP_fGCCA_NN_cor_FEM = return(CPP_RGCCA(model_name, data, test_options, path_list)),
+    CPP_fRGCCA_NN_FEM = return(CPP_RGCCA(model_name, data, test_options, path_list)),
+    CPP_fGCCA_NN_cov_FEM = return(CPP_RGCCA(model_name, data, test_options, path_list)),
+    CPP_fGCCA_cor_SPLINES = return(CPP_RGCCA(model_name, data, test_options, path_list)),
+    CPP_fRGCCA_SPLINES = return(CPP_RGCCA(model_name, data, test_options, path_list)),
+    CPP_fGCCA_cov_SPLINES = return(CPP_RGCCA(model_name, data, test_options, path_list)),
+    CPP_fGCCA_NN_cor_SPLINES = return(CPP_RGCCA(model_name, data, test_options, path_list)),
+    CPP_fRGCCA_NN_SPLINES = return(CPP_RGCCA(model_name, data, test_options, path_list)),
+    CPP_fGCCA_NN_cov_SPLINES = return(CPP_RGCCA(model_name, data, test_options, path_list)),
+    CPP_tfRGCCA = return(CPP_RGCCA(model_name, data, test_options, path_list)),
+    {
+      stop(paste("The model", model_name, "does not exist"))
+    }
   )
 }
 
 
 R_RGCCA <- function(model_name, data, test_options) {
-  ## Initialize empty model
-  model <- list()
-
   ## Get all the necessary info form data and test_options
   n_groups <- test_options$dimensions$n_groups
-  n_comp <- test_options$model_options$n_comp
+  n_comp <- model_option(test_options, "n_comp", rgcca_model_option_defaults()$n_comp)
   blocks <- data$X
-  C <- data$C
+  C <- rgcca_C(test_options, data)
 
   switch(model_name,
-         R_GCCA_cor = {
-           tau <- 0
-         },
-         R_RGCCA = {
-           tau <- "optimal"
-         },
-         R_GCCA_cov = {
-           tau <- 1
-         }
+    R_GCCA_cor = {
+      tau <- 0
+    },
+    R_RGCCA = {
+      tau <- "optimal"
+    },
+    R_GCCA_cov = {
+      tau <- 1
+    }
+  )
+
+  model <- new_rgcca_model(
+    test_options,
+    model_options = list(
+      solver = model_name,
+      n_obs = nrow(blocks[[1]]),
+      n_comp = n_comp,
+      lambda = 0,
+      tau = tau,
+      non_negative_weights = FALSE,
+      lambda_selection_weights = FALSE
+    ),
+    C = C
   )
 
   # Fit multivariate PCA ----
@@ -135,15 +147,18 @@ R_RGCCA <- function(model_name, data, test_options) {
   model$results$A_hat_locs <- A_locs
   model$results$A_star_hat_locs <- A_star_locs
   model$results$H_hat <- H
-  model$results$execution_time <- end.time - start.time
-  model$lambdas <- list(rep(0, n_comp), rep(0, n_comp), rep(0, n_comp), rep(0, n_comp))
-  model$objective <- c()
-  for (h in 1:n_comp) {
-    n_last <- length(fit_rgcca$crit[[h]])
-    model$objective <- c(model$objective, fit_rgcca$crit[[h]][n_last])
-  }
+  model$diagnostics$execution_time <- end.time - start.time
+  model$model_selection$tau <- replicate(n_comp, fit_rgcca$call$tau, simplify = FALSE)
+  model$model_selection$lambda_weights <- rep(0, n_comp)
+  model$model_selection$lambda_components <- replicate(n_comp, rep(0, n_groups), simplify = FALSE)
+  objective <- objective_from_crit(fit_rgcca$crit, n_comp)
+  model$diagnostics$component_diagnostics <- component_diagnostics_from_objective(
+    objective$objective
+  )
+  model$diagnostics$objective_history <- objective$objective_history
 
   # Add flags ----
+  model$model_traits$backend <- "R"
   model$model_traits$is_functional <- FALSE
   model$model_traits$has_interpolator <- FALSE
 
@@ -153,7 +168,7 @@ R_RGCCA <- function(model_name, data, test_options) {
 
 CPP_RGCCA <- function(model_name, data, test_options, path_list) {
   ## Info
-  n_comp <- test_options$model_options$n_comp
+  n_comp <- model_option(test_options, "n_comp", rgcca_model_option_defaults()$n_comp)
 
   lambda <- test_options$regularization$lambda %||% 0
   lambda_grid <- test_options$regularization$lambda_grid %||% NULL
@@ -170,73 +185,70 @@ CPP_RGCCA <- function(model_name, data, test_options, path_list) {
 
   non_negative_weights <- FALSE
   switch(model_name,
-         CPP_GCCA_cor = {
-           tau <- 0
-         },
-         CPP_fGCCA_cor_FEM = {
-           tau <- 0
-         },
-         CPP_fGCCA_cor_SPLINES = {
-           tau <- 0
-         },
-         CPP_GCCA_NN_cor = {
-           tau <- 0
-           non_negative_weights <- TRUE
-         },
-         CPP_fGCCA_NN_cor_FEM = {
-           tau <- 0
-           non_negative_weights <- TRUE
-         },
-         CPP_fGCCA_NN_cor_SPLINES = {
-           tau <- 0
-           non_negative_weights <- TRUE
-         },
-         CPP_RGCCA = {
-           tau <- -1
-         },
-         CPP_fRGCCA_FEM = {
-           tau <- -1
-         },
-         CPP_fRGCCA_SPLINES = {
-           tau <- -1
-         },
-         CPP_RGCCA_NN = {
-           tau <- -1
-           non_negative_weights <- TRUE
-         },
-         CPP_fRGCCA_NN_FEM = {
-           tau <- -1
-           non_negative_weights <- TRUE
-         },
-         CPP_fRGCCA_NN_SPLINES = {
-           tau <- -1
-           non_negative_weights <- TRUE
-         },
-         CPP_GCCA_cov = {
-           tau <- 1
-         },
-         CPP_fGCCA_cov_FEM = {
-           tau <- 1
-         },
-         CPP_fGCCA_cov_SPLINES = {
-           tau <- 1
-         },
-         CPP_GCCA_NN_cov = {
-           tau <- 1
-           non_negative_weights <- TRUE
-         },
-         CPP_fGCCA_NN_cov_FEM = {
-           tau <- 1
-           non_negative_weights <- TRUE
-         },
-         CPP_fGCCA_NN_cov_SPLINES = {
-           tau <- 1
-           non_negative_weights <- TRUE
-         },
+    CPP_GCCA_cor = {
+      tau <- 0
+    },
+    CPP_fGCCA_cor_FEM = {
+      tau <- 0
+    },
+    CPP_fGCCA_cor_SPLINES = {
+      tau <- 0
+    },
+    CPP_GCCA_NN_cor = {
+      tau <- 0
+      non_negative_weights <- TRUE
+    },
+    CPP_fGCCA_NN_cor_FEM = {
+      tau <- 0
+      non_negative_weights <- TRUE
+    },
+    CPP_fGCCA_NN_cor_SPLINES = {
+      tau <- 0
+      non_negative_weights <- TRUE
+    },
+    CPP_RGCCA = {
+      tau <- -1
+    },
+    CPP_fRGCCA_FEM = {
+      tau <- -1
+    },
+    CPP_fRGCCA_SPLINES = {
+      tau <- -1
+    },
+    CPP_RGCCA_NN = {
+      tau <- -1
+      non_negative_weights <- TRUE
+    },
+    CPP_fRGCCA_NN_FEM = {
+      tau <- -1
+      non_negative_weights <- TRUE
+    },
+    CPP_fRGCCA_NN_SPLINES = {
+      tau <- -1
+      non_negative_weights <- TRUE
+    },
+    CPP_GCCA_cov = {
+      tau <- 1
+    },
+    CPP_fGCCA_cov_FEM = {
+      tau <- 1
+    },
+    CPP_fGCCA_cov_SPLINES = {
+      tau <- 1
+    },
+    CPP_GCCA_NN_cov = {
+      tau <- 1
+      non_negative_weights <- TRUE
+    },
+    CPP_fGCCA_NN_cov_FEM = {
+      tau <- 1
+      non_negative_weights <- TRUE
+    },
+    CPP_fGCCA_NN_cov_SPLINES = {
+      tau <- 1
+      non_negative_weights <- TRUE
+    },
   )
-
-  ## Initialize empty model
-  model <- list()
 
   # Paths ----
   path_cpp_script <- path_list$cpp_script
@@ -268,28 +280,40 @@ CPP_RGCCA <- function(model_name, data, test_options, path_list) {
   lambda_is_auto <- !is.na(lambda) && lambda < 0
   lambda_selection_weights <- isTRUE(lambda_is_auto || lambda_selection_weights)
   lambda_for_cpp <- if (lambda_is_auto) 1e-12 else ifelse(is.na(lambda), 0, lambda)
-  n_bootstrap_samples <- model_option(test_options, "n_bootstrap_samples", 0)
+  C <- rgcca_C(test_options, data)
   cpp_script_arguments <- list()
   cpp_script_arguments$path_list <- list(
     mesh = path_tmp_mesh,
     data = path_tmp_data,
     results = path_tmp_results
   )
-  cpp_script_arguments$options <- collect_cpp_model_options(test_options$model_options)
-  cpp_script_arguments$options$solver <- model_name
-  cpp_script_arguments$options$lambda <- lambda_for_cpp
-  cpp_script_arguments$options$n_obs <- data$dimensions$n
-  cpp_script_arguments$options$n_comp <- test_options$model_options$n_comp
-  cpp_script_arguments$options$non_negative_weights <- non_negative_weights
-  cpp_script_arguments$options$tau <- tau
-  cpp_script_arguments$options$lambda_selection_weights <- lambda_selection_weights
-  cpp_script_arguments$options$n_bootstrap_samples <- n_bootstrap_samples
-  cpp_script_arguments$options$lambda_grid <- lambda_grid
-  cpp_script_arguments$options$connection <- connection_to_json(data$C)
+  cpp_script_arguments$model_options <- cpp_rgcca_model_options(
+    test_options = test_options,
+    data = data,
+    model_name = model_name,
+    n_obs = data$dimensions$n,
+    tau = tau,
+    non_negative_weights = non_negative_weights,
+    lambda_selection_weights = lambda_selection_weights,
+    lambda_for_cpp = lambda_for_cpp,
+    lambda_grid = lambda_grid
+  )
+  cpp_script_arguments$bootstrap_options <- cpp_rgcca_bootstrap_options(
+    test_options = test_options
+  )
 
+  model <- new_rgcca_model(
+    test_options,
+    model_options = cpp_script_arguments$model_options,
+    bootstrap_options = cpp_script_arguments$bootstrap_options,
+    C = C
+  )
+
+  name_test <- test_option_name(test_options, path_tmp_results)
+  batch_index <- test_batch_index(test_options)
   file_name_params <- paste0(
-    test_options$name_test, "_", model_name, "_batch_",
-    test_options$batch_index, "_params.json"
+    name_test, "_", model_name, "_batch_",
+    batch_index, "_params.json"
   )
 
   write_json(
@@ -314,60 +338,60 @@ CPP_RGCCA <- function(model_name, data, test_options, path_list) {
   }
 
   switch(model_name,
-         CPP_GCCA_cor = run_cpp("fit_model_RGCCA"),
-         CPP_RGCCA = run_cpp("fit_model_RGCCA"),
-         CPP_GCCA_cov = run_cpp("fit_model_RGCCA"),
-         CPP_GCCA_NN_cor = run_cpp("fit_model_RGCCA"),
-         CPP_RGCCA_NN = run_cpp("fit_model_RGCCA"),
-         CPP_GCCA_NN_cov = run_cpp("fit_model_RGCCA"),
-         CPP_fGCCA_cor_FEM = {
-           run_cpp("fit_model_fRGCCA_fem")
-           grid_D <- TRUE
-         },
-         CPP_fRGCCA_FEM = {
-           run_cpp("fit_model_fRGCCA_fem")
-           grid_D <- TRUE
-         },
-         CPP_fGCCA_cov_FEM = {
-           run_cpp("fit_model_fRGCCA_fem")
-           grid_D <- TRUE
-         },
-         CPP_fGCCA_NN_cor_FEM = {
-           run_cpp("fit_model_fRGCCA_fem")
-           grid_D <- TRUE
-         },
-         CPP_fRGCCA_NN_FEM = {
-           run_cpp("fit_model_fRGCCA_fem")
-           grid_D <- TRUE
-         },
-         CPP_fGCCA_NN_cov_FEM = {
-           run_cpp("fit_model_fRGCCA_fem")
-           grid_D <- TRUE
-         },
-         CPP_fGCCA_cor_SPLINES = {
-           run_cpp("fit_model_fRGCCA_splines")
-           grid_D <- TRUE
-         },
-         CPP_fRGCCA_SPLINES = {
-           run_cpp("fit_model_fRGCCA_splines")
-           grid_D <- TRUE
-         },
-         CPP_fGCCA_cov_SPLINES = {
-           run_cpp("fit_model_fRGCCA_splines")
-           grid_D <- TRUE
-         },
-         CPP_fGCCA_NN_cor_SPLINES = {
-           run_cpp("fit_model_fRGCCA_splines")
-           grid_D <- TRUE
-         },
-         CPP_fRGCCA_NN_SPLINES = {
-           run_cpp("fit_model_fRGCCA_splines")
-           grid_D <- TRUE
-         },
-         CPP_fGCCA_NN_cov_SPLINES = {
-           run_cpp("fit_model_fRGCCA_splines")
-           grid_D <- TRUE
-         }
+    CPP_GCCA_cor = run_cpp("fit_model_RGCCA"),
+    CPP_RGCCA = run_cpp("fit_model_RGCCA"),
+    CPP_GCCA_cov = run_cpp("fit_model_RGCCA"),
+    CPP_GCCA_NN_cor = run_cpp("fit_model_RGCCA"),
+    CPP_RGCCA_NN = run_cpp("fit_model_RGCCA"),
+    CPP_GCCA_NN_cov = run_cpp("fit_model_RGCCA"),
+    CPP_fGCCA_cor_FEM = {
+      run_cpp("fit_model_fRGCCA_fem")
+      grid_D <- TRUE
+    },
+    CPP_fRGCCA_FEM = {
+      run_cpp("fit_model_fRGCCA_fem")
+      grid_D <- TRUE
+    },
+    CPP_fGCCA_cov_FEM = {
+      run_cpp("fit_model_fRGCCA_fem")
+      grid_D <- TRUE
+    },
+    CPP_fGCCA_NN_cor_FEM = {
+      run_cpp("fit_model_fRGCCA_fem")
+      grid_D <- TRUE
+    },
+    CPP_fRGCCA_NN_FEM = {
+      run_cpp("fit_model_fRGCCA_fem")
+      grid_D <- TRUE
+    },
+    CPP_fGCCA_NN_cov_FEM = {
+      run_cpp("fit_model_fRGCCA_fem")
+      grid_D <- TRUE
+    },
+    CPP_fGCCA_cor_SPLINES = {
+      run_cpp("fit_model_fRGCCA_splines")
+      grid_D <- TRUE
+    },
+    CPP_fRGCCA_SPLINES = {
+      run_cpp("fit_model_fRGCCA_splines")
+      grid_D <- TRUE
+    },
+    CPP_fGCCA_cov_SPLINES = {
+      run_cpp("fit_model_fRGCCA_splines")
+      grid_D <- TRUE
+    },
+    CPP_fGCCA_NN_cor_SPLINES = {
+      run_cpp("fit_model_fRGCCA_splines")
+      grid_D <- TRUE
+    },
+    CPP_fRGCCA_NN_SPLINES = {
+      run_cpp("fit_model_fRGCCA_splines")
+      grid_D <- TRUE
+    },
+    CPP_fGCCA_NN_cov_SPLINES = {
+      run_cpp("fit_model_fRGCCA_splines")
+      grid_D <- TRUE
+    }
   )
 
 
@@ -425,225 +449,54 @@ CPP_RGCCA <- function(model_name, data, test_options, path_list) {
   model$results$A_star_hat_locs <- A_star_locs
   if (grid_D) model$results$A_hat_grid <- A_grid
   if (grid_D) model$results$A_star_hat_grid <- A_star_grid
-  model$results$execution_time <- end.time - start.time
+  model$diagnostics$execution_time <- end.time - start.time
 
   # Add flags ----
+  model$model_traits$backend <- "CPP"
   model$model_traits$is_functional <- FALSE
   model$model_traits$has_interpolator <- FALSE
 
-  model$corr <- vector("list", length(n_comp))
-  model$results$active_connections <- vector("list", length(n_comp))
-  model$results$active_blocks <- vector("list", length(n_comp))
-  for (h in 1:n_comp) {
-    objective_h <- as.matrix(read.csv(paste(path_tmp_results, "objective", h, ".csv", sep = "")))
-    n_last <- length(objective_h)
-    model$objective <- c(model$objective, objective_h[n_last])
-    model$corr[[h]] <- as.matrix(read.csv(paste(path_tmp_results, "correlation_matrix", h, ".csv", sep = "")))
-    model$results$active_connections[[h]] <- read_matrix_if_exists(
-      paste0(path_tmp_results, "active_connections", h, ".csv")
-    )
-    active_blocks_h <- read_matrix_if_exists(
-      paste0(path_tmp_results, "active_blocks", h, ".csv")
-    )
-    if (!is.null(active_blocks_h)) {
-      active_blocks_h <- as.logical(as.numeric(active_blocks_h[, 1]))
-    }
-    model$results$active_blocks[[h]] <- active_blocks_h
-  }
-
-  component_significance_path <- paste0(path_tmp_results, "component_significance.csv")
-  if (file.exists(component_significance_path)) {
-    model$results$component_significance <- as.matrix(read.csv(component_significance_path))
-  }
+  diagnostics <- load_cpp_diagnostics(path_tmp_results, n_comp)
+  model <- attach_cpp_diagnostics(model, diagnostics, n_comp, data$dimensions$n_groups)
 
   ## Load bootstrap selection results ----
-  model_selection <- lambda_selection_weights ||
-    as_option_bool(model_option(test_options, "block_deactivation", FALSE)) ||
-    as_option_bool(model_option(test_options, "connection_deactivation", FALSE))
-  if (model_selection) {
-    bootstrap <- vector("list", n_comp)
-
-    for (h in 1:n_comp) {
-      lambda_grid <- as.numeric(read.csv(
-        paste0(path_tmp_results, "bootstrap_lambda_grid", h, ".csv")
-      )[, 1])
-
-      criterion <- as.numeric(read.csv(
-        paste0(path_tmp_results, "bootstrap_criterion", h, ".csv")
-      )[, 1])
-
-      lambda_opt <- as.numeric(read.csv(
-        paste0(path_tmp_results, "bootstrap_lambda_opt", h, ".csv")
-      )[1, 1])
-
-      w_fit_locs <- vector("list", length(lambda_grid))
-      if (grid_D) w_fit_grid <- vector("list", length(lambda_grid))
-
-      w_boot_locs <- vector("list", length(lambda_grid))
-      if (grid_D) w_boot_grid <- vector("list", length(lambda_grid))
-
-      w_min_locs <- vector("list", length(lambda_grid))
-      if (grid_D) w_min_grid <- vector("list", length(lambda_grid))
-
-      w_ci_locs <- vector("list", length(lambda_grid))
-      if (grid_D) w_ci_grid <- vector("list", length(lambda_grid))
-
-      corr_min <- vector("list", length(lambda_grid))
-      corr_ci_low <- vector("list", length(lambda_grid))
-      corr_ci_high <- vector("list", length(lambda_grid))
-
-      for (i in seq_along(lambda_grid)) {
-        if (criterion[i] >= 0) {
-          w_fit_locs[[i]] <- vector("list", n_groups)
-          if (grid_D) w_fit_grid[[i]] <- vector("list", n_groups)
-          w_boot_locs[[i]] <- vector("list", n_groups)
-          if (grid_D) w_boot_grid[[i]] <- vector("list", n_groups)
-          w_min_locs[[i]] <- vector("list", n_groups)
-          if (grid_D) w_min_grid[[i]] <- vector("list", n_groups)
-          w_ci_locs[[i]] <- vector("list", n_groups)
-          if (grid_D) w_ci_grid[[i]] <- vector("list", n_groups)
-
-
-          corr_min[[i]] <- read_matrix_if_exists(
-            paste0(
-              path_tmp_results,
-              "bootstrap_corr_min_comp", h,
-              "_lambda", i,
-              ".csv"
-            )
-          )
-          corr_ci_low[[i]] <- read_matrix_if_exists(
-            paste0(
-              path_tmp_results,
-              "bootstrap_corr_ci_low_comp", h,
-              "_lambda", i,
-              ".csv"
-            )
-          )
-          corr_ci_high[[i]] <- read_matrix_if_exists(
-            paste0(
-              path_tmp_results,
-              "bootstrap_corr_ci_high_comp", h,
-              "_lambda", i,
-              ".csv"
-            )
-          )
-
-          for (g in 1:n_groups) {
-            for (type in c("fit", "boot", "wmin")) {
-              W_locs <- as.matrix(read.csv(
-                paste0(
-                  path_tmp_results,
-                  "bootstrap_weights_", type,
-                  "_comp", h,
-                  "_lambda", i,
-                  "_block", g,
-                  "_locs.csv"
-                )
-              ))
-
-              if (grid_D) {
-                W_grid <- as.matrix(read.csv(
-                  paste0(
-                    path_tmp_results,
-                    "bootstrap_weights_", type,
-                    "_comp", h,
-                    "_lambda", i,
-                    "_block", g,
-                    "_grid.csv"
-                  )
-                ))
-              }
-
-              ## normalize column-wise using location norm
-              if (type != "wmin") {
-                # norms <- apply(W_locs, 2, norm_l2)
-                # norms[is.na(norms) | norms == 0] <- 1
-
-                # W_locs <- sweep(W_locs, 2, norms, "/")
-                # W_grid <- sweep(W_grid, 2, norms, "/")
-              }
-
-              if (type == "fit") {
-                w_fit_locs[[i]][[g]] <- W_locs
-                if (grid_D) w_fit_grid[[i]][[g]] <- W_grid
-              } else if (type == "boot") {
-                w_boot_locs[[i]][[g]] <- W_locs
-                if (grid_D) w_boot_grid[[i]][[g]] <- W_grid
-              } else if (type == "wmin") {
-                w_min_locs[[i]][[g]] <- W_locs
-                if (grid_D) w_min_grid[[i]][[g]] <- W_grid
-              }
-            }
-
-            w_ci_locs[[i]][[g]] <- read_matrix_if_exists(
-              paste0(
-                path_tmp_results,
-                "bootstrap_weights_ci_comp", h,
-                "_lambda", i,
-                "_block", g,
-                "_locs.csv"
-              )
-            )
-            if (grid_D) {
-              w_ci_grid[[i]][[g]] <- read_matrix_if_exists(
-                paste0(
-                  path_tmp_results,
-                  "bootstrap_weights_ci_comp", h,
-                  "_lambda", i,
-                  "_block", g,
-                  "_grid.csv"
-                )
-              )
-            }
-          }
-        }
-      }
-
-      bootstrap[[h]] <- list(
-        lambda_grid = lambda_grid,
-        criterion = criterion,
-        lambda_opt = lambda_opt,
-        w_fit_locs = w_fit_locs,
-        w_boot_locs = w_boot_locs,
-        w_min_locs = w_min_locs,
-        w_ci_locs = w_ci_locs,
-        corr_min = corr_min,
-        corr_ci_low = corr_ci_low,
-        corr_ci_high = corr_ci_high
-      )
-
-      if (grid_D) bootstrap[[h]]$w_fit_grid <- w_fit_grid
-      if (grid_D) bootstrap[[h]]$w_boot_grid <- w_boot_grid
-      if (grid_D) bootstrap[[h]]$w_min_grid <- w_min_grid
-      if (grid_D) bootstrap[[h]]$w_ci_grid <- w_ci_grid
-    }
-
-    model$results$bootstrap_selection <- bootstrap
+  bootstrap <- load_cpp_bootstrap_selection(path_tmp_results, n_comp, n_groups, grid_D)
+  if (!is.null(bootstrap)) {
+    model$model_selection$bootstrap <- bootstrap
   }
 
   return(model)
 }
 
 
-
 R_FGCCA <- function(model_name, data, test_options) {
-  ## Initialize empty model
-  model <- list()
-
   ## Get all the necessary info form data and test_options
   n_groups <- test_options$dimensions$n_groups
-  n_comp <- test_options$model_options$n_comp
+  n_comp <- model_option(test_options, "n_comp", rgcca_model_option_defaults()$n_comp)
   blocks <- data$X
-  C <- data$C
+  C <- rgcca_C(test_options, data)
 
   switch(model_name,
-         R_FGCCA_cor = {
-           tau <- 0
-         },
-         R_FGCCA_cov = {
-           tau <- 1
-         }
+    R_FGCCA_cor = {
+      tau <- 0
+    },
+    R_FGCCA_cov = {
+      tau <- 1
+    }
+  )
+
+  model <- new_rgcca_model(
+    test_options,
+    model_options = list(
+      solver = model_name,
+      n_obs = nrow(blocks[[1]]),
+      n_comp = n_comp,
+      lambda = 0,
+      tau = tau,
+      non_negative_weights = FALSE,
+      lambda_selection_weights = FALSE
+    ),
+    C = C
   )
 
   ## Data preparation
@@ -659,7 +512,7 @@ R_FGCCA <- function(model_name, data, test_options) {
   fit_fgcca <- fgcca(
     Lys,
     Lts,
-    connection = data$C,
+    connection = C,
     tau = rep(tau, n_groups),
     scheme = "factorial",
     init = "svd",
@@ -717,15 +570,18 @@ R_FGCCA <- function(model_name, data, test_options) {
   model$results$H_hat <- H
   model$results$A_hat_locs <- A_locs
   model$results$A_hat_grid <- A_grid
-  model$results$execution_time <- end.time - start.time
-  model$lambdas <- list(rep(0, n_comp), rep(0, n_comp), rep(0, n_comp), rep(0, n_comp))
-  model$objective <- c()
-  for (h in 1:n_comp) {
-    n_last <- length(fit_fgcca$crit[[h]])
-    model$objective <- c(model$objective, fit_fgcca$crit[[h]][n_last])
-  }
+  model$diagnostics$execution_time <- end.time - start.time
+  model$model_selection$tau <- replicate(n_comp, rep(tau, n_groups), simplify = FALSE)
+  model$model_selection$lambda_weights <- rep(0, n_comp)
+  model$model_selection$lambda_components <- replicate(n_comp, rep(0, n_groups), simplify = FALSE)
+  objective <- objective_from_crit(fit_fgcca$crit, n_comp)
+  model$diagnostics$component_diagnostics <- component_diagnostics_from_objective(
+    objective$objective
+  )
+  model$diagnostics$objective_history <- objective$objective_history
 
   # Add flags ----
+  model$model_traits$backend <- "R"
   model$model_traits$is_functional <- FALSE
   model$model_traits$has_interpolator <- FALSE
 

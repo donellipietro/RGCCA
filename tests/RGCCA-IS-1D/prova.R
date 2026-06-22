@@ -42,6 +42,7 @@ source(paste0("tests/", test_suite, "/utils/generate_data.R"))
 # source(paste0("tests/", test_suite, "/utils/model_evaluation.R"))
 
 
+n_comp <- 3
 test_options <- list(
   cpp_script = "RGCCA",
   test_options = list(
@@ -58,16 +59,18 @@ test_options <- list(
     n = 200,
     n_locs = 101
   ),
-  model_options = list(          
-    n_comp = 3,
-    init = "Uniform",
-    lambda_selection_weights = FALSE
+  model_options = list(
+    cache_covariances = TRUE,
+    n_comp = n_comp,
+    init_strategy = "uniform",
+    scheme = "factorial",
+    block_deactivation = TRUE,
+    connection_deactivation = TRUE,
+    component_significance = TRUE
   ),
+  bootstrap_options = list(),
   noise = list(
     sigma_noise = 1
-  ),
-  regularization = list(
-    lambda = 1e-4
   )
 )
 
@@ -78,97 +81,21 @@ path_list <- update_paths(path_list, "test1", test_options)
 
 data <- generate_data(test_options, seed = 0)
 
-
-# par(mfrow = c(1,4), mar = c(2,2,2,2))
-# matplot(data$locations_D, t(data$X[[1]]), type = "l", xlab = "", ylab = "", main = "Group 1")
-# matplot(data$locations_D, t(data$X[[2]]), type = "l", xlab = "", ylab = "", main = "Group 2")
-# matplot(data$locations_D, t(data$X[[3]]), type = "l", xlab = "", ylab = "", main = "Group 3")
-# matplot(data$locations_D, t(data$X[[4]]), type = "l", xlab = "", ylab = "", main = "Group 4")
-# 
-# par(mfrow = c(2,2), mar = c(2,2,2,2))
-# matplot(data$locations_D, t(data$X_locs[[1]]), type = "l", xlab = "", ylab = "", main = "Group 1")
-# matplot(data$locations_D, t(data$X_locs[[4]]), type = "l", xlab = "", ylab = "", main = "Group 4")
-# matplot(data$locations_D, t(data$X_locs[[2]]), type = "l", xlab = "", ylab = "", main = "Group 2")
-# matplot(data$locations_D, t(data$X_locs[[3]]), type = "l", xlab = "", ylab = "", main = "Group 3")
-
-# plot.curve(data$grid_D, data$A_grid[[1]][,1]) + std_plot_settings_curves()
-# plot.curve(data$grid_D, data$A_grid[[1]][,2]) + std_plot_settings_curves()
-# plot.curve(data$grid_D, data$A_grid[[1]][,3]) + std_plot_settings_curves()
-
-# plot.curve(data$grid_T, data$E_grid[[1]][,1]) + std_plot_settings_curves()
-# plot.curve(data$grid_T, data$E_grid[[1]][,2]) + std_plot_settings_curves()
-# plot.curve(data$grid_T, data$E_grid[[1]][,3]) + std_plot_settings_curves()
-
-
-
-
-# IGNORE_CPP_OUTPUT = FALSE
-# test_options$model_options$n_comp <- 3
-# test_options$model_options$lambda_selection_weights <- FALSE
-# results <- CPP_RGCCA("CPP_fGCCA_cov_FEM", data, test_options, path_list)
-# results <- CPP_RGCCA("CPP_fGCCA_cov_SPLINES", data, test_options, path_list)
-# results <- CPP_RGCCA("CPP_fGCCA_NN_cov_FEM", data, test_options, path_list)
-# results <- CPP_RGCCA("CPP_fGCCA_NN_cov_SPLINES", data, test_options, path_list)
-# 
-# h <- 2
-# 
-# plot_list <- list()
-# for(g in 1:4) {
-#   plot_list[[g]] <- plot.curve(data$grid_D, results$results$A_hat_grid[[g]][,h],
-#                                true = data$A_grid[[g]][,h]) + std_plot_settings_curves()
-# }
-# plot <- arrangeGrob(grobs = plot_list)
-# grid.arrange(plot)
-
-
-
-
 # Fitto il modello con tutte e tre le componenti
 IGNORE_CPP_OUTPUT <- FALSE
 IGNORE_R_OUTPUT <- FALSE
 test_options$regularization$lambda <- 0
-test_options$model_options$n_comp <- 3
-results1 <- R_RGCCA("R_GCCA_cov", data, test_options)
-results2 <- CPP_RGCCA("CPP_GCCA_cov", data, test_options, path_list)
-# results3 <- CPP_RGCCA("CPP_GCCA_NN_cov", data, test_options, path_list)
+test_options$model_options$n_comp <- n_comp
+fit_model <- CPP_RGCCA("CPP_GCCA_NN_cov", data, test_options, path_list)
 
-h <- 1
-
+idx = 1
 plot_list <- list()
-for(i in 1:4) {
-  plot_list[[i]] <- plot.curve(data$locations_D, results1$results$A_star_hat_locs[[i]][,h],
-                               true = data$A_locs[[i]][,h]) + std_plot_settings_curves()
+for(h in 1:n_comp) {
+  for(i in 1:4) {
+    plot_list[[idx]] <- plot.curve(data$locations_D, fit_model$results$A_hat_locs[[i]][,h],
+                                 true = data$A_locs[[i]][,h]) + std_plot_settings_curves()
+    idx <- idx + 1
+  }
 }
-plot <- arrangeGrob(grobs = plot_list)
+plot <- arrangeGrob(grobs = plot_list, ncol = 4)
 grid.arrange(plot)
-
-plot_list <- list()
-for(i in 1:4) {
-  plot_list[[i]] <- plot.curve(data$locations_D, results2$results$A_star_hat_locs[[i]][,h],
-                               true = data$A_locs[[i]][,h]) + std_plot_settings_curves()
-}
-plot <- arrangeGrob(grobs = plot_list)
-grid.arrange(plot)
-
-# plot_list <- list()
-# for(i in 1:4) {
-#   plot_list[[i]] <- plot.curve(data$locations_D, results3$results$A_hat_locs[[i]][,h],
-#                                true = data$A_locs[[i]][,h]) + std_plot_settings_curves()
-# }
-# plot <- arrangeGrob(grobs = plot_list)
-# grid.arrange(plot)
-
-max(c(max(abs(results1$results$A_hat_locs[[1]] - results2$results$A_hat_locs[[1]])),
-      max(abs(results1$results$A_hat_locs[[2]] - results2$results$A_hat_locs[[2]])),
-      max(abs(results1$results$A_hat_locs[[3]] - results2$results$A_hat_locs[[3]])),
-      max(abs(results1$results$A_hat_locs[[4]] - results2$results$A_hat_locs[[4]]))))
-
-max(c(max(abs(results1$results$A_star_hat_locs[[1]] - results2$results$A_star_hat_locs[[1]])),
-      max(abs(results1$results$A_star_hat_locs[[2]] - results2$results$A_star_hat_locs[[2]])),
-      max(abs(results1$results$A_star_hat_locs[[3]] - results2$results$A_star_hat_locs[[3]])),
-      max(abs(results1$results$A_star_hat_locs[[4]] - results2$results$A_star_hat_locs[[4]]))))
-
-max(c(max(abs(results1$results$H_hat[[1]] - results2$results$H_hat[[1]])),
-      max(abs(results1$results$H_hat[[2]] - results2$results$H_hat[[2]])),
-      max(abs(results1$results$H_hat[[3]] - results2$results$H_hat[[3]])),
-      max(abs(results1$results$H_hat[[4]] - results2$results$H_hat[[4]]))))
