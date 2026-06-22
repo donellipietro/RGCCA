@@ -39,6 +39,7 @@ invisible(suppressMessages(sapply(c(
 ## Load functions ----
 source("src/utils/cat.R")
 source("src/utils/directories.R")
+source("src/utils/test_groups.R")
 source("src/utils/options.R")
 source("src/utils/load_results_utils.R")
 source("src/utils/plotting_utils.R")
@@ -59,31 +60,59 @@ path_list <- create_paths(test_suite)
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) == 0) {
   INTERACTIVE <- TRUE
-  name_main_test <- name_main_test_default
+  requested_main_tests <- name_main_test_default
 } else {
   INTERACTIVE <- FALSE
-  name_main_test <- args[1]
+  requested_main_tests <- args
 }
 
-## Prepare queue/log dirs for this test
-path_list$queue <- paste0(path_list$queue, name_main_test, "/")
-path_list$logs <- paste0(path_list$logs, name_main_test, "/")
-mkdir(c(path_list$queue, path_list$logs))
+name_main_tests <- resolve_test_names(test_suite, requested_main_tests)
+name_output_test <- if (length(requested_main_tests) == 1) {
+  requested_main_tests[1]
+} else {
+  paste(requested_main_tests, collapse = "_")
+}
 
-## Generate all option files for this test
-generate_options(test_suite, name_main_test, path_list$queue)
+loaded_results <- NULL
+expected_varying_options <- NULL
 
+for (name_main_test in name_main_tests) {
+  path_list_i <- path_list
 
-## Load results ----
+  ## Prepare queue/log dirs for this test
+  path_list_i$queue <- paste0(path_list_i$queue, name_main_test, "/")
+  path_list_i$logs <- paste0(path_list_i$logs, name_main_test, "/")
+  mkdir(c(path_list_i$queue, path_list_i$logs))
 
-## Load results (all option combinations, all batches)
-loaded_results <- load_all_quantitiative_results(path_list, name_main_test)
+  ## Generate all option files for this test
+  generate_options(test_suite, name_main_test, path_list_i$queue)
+
+  ## Load results (all option combinations, all batches)
+  loaded_results_i <- load_all_quantitiative_results(path_list_i, name_main_test)
+
+  if (is.null(expected_varying_options)) {
+    expected_varying_options <- loaded_results_i$varying_options
+  } else if (!identical(expected_varying_options, loaded_results_i$varying_options)) {
+    stop(
+      paste0(
+        "Cannot aggregate tests with different varying_options: ",
+        paste(name_main_tests, collapse = ", ")
+      )
+    )
+  }
+
+  loaded_results <- if (is.null(loaded_results)) {
+    loaded_results_i
+  } else {
+    accumulate_results_struct(loaded_results, loaded_results_i)
+  }
+}
 
 
 # Plot aggregated results ----
 
 ## Create the path for images
-path_list$images <- paste0(path_list$images, name_main_test, "/")
+path_list$images <- paste0(path_list$images, name_output_test, "/")
 mkdir(path_list$images)
 
 ## Define an order for the varying options

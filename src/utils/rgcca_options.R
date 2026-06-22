@@ -62,6 +62,30 @@ as_option_bool <- function(x, default = FALSE) {
 }
 
 
+test_threading_mode <- function(test_options, default = "single") {
+  mode <- NULL
+  if (!is.null(test_options$test_options)) {
+    mode <- test_options$test_options$threading %||% test_options$test_options$thread_mode
+  }
+  mode <- mode %||% default
+  mode <- tolower(as.character(mode[1]))
+  if (!mode %in% c("single", "multi")) {
+    stop("test_options$threading must be either 'single' or 'multi'.", call. = FALSE)
+  }
+  mode
+}
+
+
+set_cpp_thread_env <- function(test_options) {
+  Sys.setenv(
+    OMP_NUM_THREADS = "1",
+    OPENBLAS_NUM_THREADS = "1",
+    VECLIB_MAXIMUM_THREADS = "1"
+  )
+  invisible("1")
+}
+
+
 is_default_rgcca_token <- function(value) {
   if (is.null(value) || length(value) == 0) {
     return(TRUE)

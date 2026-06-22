@@ -53,6 +53,7 @@ invisible(suppressMessages(sapply(c(
 ## Load general utility functions
 source("src/utils/cat.R")
 source("src/utils/directories.R")
+source("src/utils/test_groups.R")
 source("src/utils/options.R")
 source("src/utils/mesh_utils.R")
 source("src/utils/domain_utils.R")
@@ -95,7 +96,7 @@ if (length(args) == 0) {
   source(paste("tests/", test_suite, "/utils/generate_options.R", sep = ""))
   
   ## Select the test you're interested in
-  name_main_test <- name_main_test_default
+  name_main_test <- resolve_test_names(test_suite, name_main_test_default)[1]
   
   ## Update directories according to the new test
   path_list$queue <- paste0(path_list$queue, name_main_test, "/")

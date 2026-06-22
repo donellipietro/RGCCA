@@ -93,6 +93,16 @@ make run_test_slurm TEST_SUITE=RGCCA-IS-1D TEST_NAME=testMultivariate \
   SLURM_COMPILE=1 SLURM_COMPILE_MODEL=RGCCA SLURM_COMPILE_TARGET=fit_model_RGCCA
 ```
 
+Tests can be declared as groups in a suite `config.R`. For example,
+`RGCCA-IS-1D` exposes `testSensitivity` as a parent for
+`testSensitivitySingleThread` and `testSensitivityMultiThread`; running the
+parent prepares and runs both child queues, then aggregates them together.
+Child options declare `test_options$threading` as `"single"` or `"multi"`.
+Local parallel runs keep multi-thread children sequential, while Slurm submits
+multi-thread children with `MULTITHREAD_CPUS`, `MULTITHREAD_MEM`, and
+`MULTITHREAD_TIME` from `config.R` unless overridden with
+`SLURM_MULTI_CPUS`, `SLURM_MULTI_MEM`, or `SLURM_MULTI_TIME`.
+
 The runners export `OMP_NUM_THREADS=1`, `OPENBLAS_NUM_THREADS=1`, and
 `VECLIB_MAXIMUM_THREADS=1` by default so each parallel test worker does not
 spawn additional BLAS/OpenMP threads unless explicitly overridden.

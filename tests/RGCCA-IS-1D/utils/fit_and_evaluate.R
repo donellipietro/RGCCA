@@ -65,6 +65,11 @@ fit_and_evaluate_models <- function(path_list,
       
       ## Fit the model
       model <- fit_model(model_name, data, path_list, test_options)
+
+      if (is.null(model)) {
+        cat("skipped.\n")
+        next
+      }
       
       ## Adjust results
       model <- adjust_results(model, data)

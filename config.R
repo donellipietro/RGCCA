@@ -41,6 +41,9 @@ TESTBENCH_CONFIG_PROFILES <- list(
       # If SINGULARITY_IMAGE is empty, compile on the host machine.
       SINGULARITY_IMAGE = "",
       SINGULARITY_BIND_PATHS = PATH_REPO,
+      MULTITHREAD_CPUS = 12,
+      MULTITHREAD_MEM = "32GB",
+      MULTITHREAD_TIME = "12:00:00",
       R_CRAN_REPO = "https://cloud.r-project.org",
       R_LIBS_USER = Sys.getenv("R_LIBS_USER", unset = ""),
       R_LIBS_SITE = Sys.getenv("R_LIBS_SITE", unset = "")
@@ -89,6 +92,9 @@ TESTBENCH_CONFIG_PROFILES <- list(
       HEAVY_MEM = "32GB",
       DEFAULT_TIME = "12:00:00",
       HEAVY_TIME = "72:00:00",
+      MULTITHREAD_CPUS = 20,
+      MULTITHREAD_MEM = "32GB",
+      MULTITHREAD_TIME = "72:00:00",
       R_CRAN_REPO = "https://cloud.r-project.org",
       R_LIBS_USER = "/home/preclineu/piedon/R/x86_64-pc-linux-gnu-library/4.3",
       R_LIBS_SITE = "/opt/R-packages/4.3.3:/opt/R/4.3.3/lib64/R/library"

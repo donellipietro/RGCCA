@@ -16,6 +16,9 @@ Environment options:
   SLURM_CPUS          Override cpus-per-task
   SLURM_MEM           Override memory
   SLURM_TIME          Override walltime
+  SLURM_MULTI_CPUS    Override multi-thread test cpus-per-task
+  SLURM_MULTI_MEM     Override multi-thread test memory
+  SLURM_MULTI_TIME    Override multi-thread test walltime
   SLURM_ARRAY_LIMIT   Limit concurrent array tasks, e.g. 20
   SLURM_COMPILE       Submit C++ compilation before test jobs (0/1)
   SLURM_COMPILE_MODEL Optional model to compile instead of --all
@@ -58,9 +61,9 @@ DRY_RUN="${SLURM_DRY_RUN:-0}"
 COMPILE_BEFORE_SUBMIT="${SLURM_COMPILE:-0}"
 SUBMIT_AGGREGATE="${SLURM_AGGREGATE:-1}"
 
-export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
-export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-1}"
-export VECLIB_MAXIMUM_THREADS="${VECLIB_MAXIMUM_THREADS:-1}"
+export OMP_NUM_THREADS="1"
+export OPENBLAS_NUM_THREADS="1"
+export VECLIB_MAXIMUM_THREADS="1"
 
 cd "${PROJECT_DIR}"
 if [[ ! -f "${PROJECT_DIR}/.env" ]]; then
@@ -80,16 +83,35 @@ fi
 
 cd "${PATH_REPO}"
 
+config_value() {
+  local name="$1"
+  Rscript -e 'source("config.R"); cfg <- get_config(Sys.getenv("TESTBENCH_PROFILE")); value <- cfg[[commandArgs(trailingOnly = TRUE)[1]]]; if (!is.null(value)) cat(value)' "${name}"
+}
+
+ensure_config_var() {
+  local name="$1"
+  if [[ -z "${!name:-}" ]]; then
+    printf -v "${name}" '%s' "$(config_value "${name}")"
+  fi
+}
+
+for config_name in \
+  DEFAULT_CPUS DEFAULT_MEM DEFAULT_TIME \
+  HEAVY_CPUS HEAVY_MEM HEAVY_TIME \
+  MULTITHREAD_CPUS MULTITHREAD_MEM MULTITHREAD_TIME; do
+  ensure_config_var "${config_name}"
+done
+
 case "${RESOURCE_CLASS}" in
   default)
-    CPUS="${SLURM_CPUS:-${DEFAULT_CPUS:-1}}"
-    MEM="${SLURM_MEM:-${DEFAULT_MEM:-8GB}}"
-    TIME="${SLURM_TIME:-${DEFAULT_TIME:-04:00:00}}"
+    DEFAULT_RUN_CPUS="${SLURM_CPUS:-${DEFAULT_CPUS:-1}}"
+    DEFAULT_RUN_MEM="${SLURM_MEM:-${DEFAULT_MEM:-8GB}}"
+    DEFAULT_RUN_TIME="${SLURM_TIME:-${DEFAULT_TIME:-04:00:00}}"
     ;;
   heavy)
-    CPUS="${SLURM_CPUS:-${HEAVY_CPUS:-${DEFAULT_CPUS:-1}}}"
-    MEM="${SLURM_MEM:-${HEAVY_MEM:-${DEFAULT_MEM:-8GB}}}"
-    TIME="${SLURM_TIME:-${HEAVY_TIME:-${DEFAULT_TIME:-04:00:00}}}"
+    DEFAULT_RUN_CPUS="${SLURM_CPUS:-${HEAVY_CPUS:-${DEFAULT_CPUS:-1}}}"
+    DEFAULT_RUN_MEM="${SLURM_MEM:-${HEAVY_MEM:-${DEFAULT_MEM:-8GB}}}"
+    DEFAULT_RUN_TIME="${SLURM_TIME:-${HEAVY_TIME:-${DEFAULT_TIME:-04:00:00}}}"
     ;;
   *)
     echo "Error: SLURM_RESOURCES must be 'default' or 'heavy'." >&2
@@ -100,121 +122,17 @@ esac
 echo "Preparing queue for ${TEST_SUITE}/${TEST_NAME} using profile ${PROFILE}..."
 Rscript src/init.R "${TEST_SUITE}" "${TEST_NAME}"
 
-QUEUE_DIR="${PATH_QUEUE}/${TEST_SUITE}/${TEST_NAME}"
-if [[ ! -d "${QUEUE_DIR}" ]]; then
-  echo "Error: queue directory not found: ${QUEUE_DIR}" >&2
-  exit 1
-fi
+RESOLVED_TEST_NAMES=()
+while IFS= read -r resolved_test_name; do
+  RESOLVED_TEST_NAMES+=("${resolved_test_name}")
+done < <(Rscript src/resolve_test_names.R "${TEST_SUITE}" "${TEST_NAME}")
 
-OPTION_FILES=()
-while IFS= read -r option_path; do
-  OPTION_FILES+=("${option_path}")
-done < <(find "${QUEUE_DIR}" -maxdepth 1 -type f -name '*.json' | sort)
-if [[ "${#OPTION_FILES[@]}" -eq 0 ]]; then
-  echo "Error: no JSON option files found in ${QUEUE_DIR}" >&2
-  exit 1
-fi
-
-LOG_DIR="${PATH_LOGS}/slurm/${TEST_SUITE}/${TEST_NAME}"
-mkdir -p "${LOG_DIR}"
-
-TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
-MANIFEST="${LOG_DIR}/options_${TIMESTAMP}.txt"
-for option_path in "${OPTION_FILES[@]}"; do
-  basename "${option_path}"
-done > "${MANIFEST}"
-
-N_OPTIONS="${#OPTION_FILES[@]}"
-ARRAY_SPEC="1-${N_OPTIONS}"
-if [[ -n "${SLURM_ARRAY_LIMIT:-}" ]]; then
-  ARRAY_SPEC="${ARRAY_SPEC}%${SLURM_ARRAY_LIMIT}"
-fi
-
-JOB_SLUG="${TEST_SUITE}_${TEST_NAME}"
-JOB_SLUG="${JOB_SLUG//[^A-Za-z0-9_]/_}"
-JOB_SLUG="${JOB_SLUG:0:48}"
-RUN_JOB_NAME="tb_${JOB_SLUG}"
-AGG_JOB_NAME="tb_agg_${JOB_SLUG}"
-
-SBATCH_COMMON=(
-  --time="${TIME}"
-  --mem="${MEM}"
-  --cpus-per-task="${CPUS}"
-)
-
-if [[ -n "${SLURM_PARTITION:-}" ]]; then
-  SBATCH_COMMON+=(--partition="${SLURM_PARTITION}")
-fi
-if [[ -n "${SLURM_ACCOUNT:-}" ]]; then
-  SBATCH_COMMON+=(--account="${SLURM_ACCOUNT}")
-fi
-if [[ -n "${SLURM_QOS:-}" ]]; then
-  SBATCH_COMMON+=(--qos="${SLURM_QOS}")
-fi
-
-RUN_WRAP=$(cat <<EOF
-set -euo pipefail
-
-cd '${PATH_REPO}'
-set -a
-source '${PROJECT_DIR}/.env'
-set +a
-
-export TESTBENCH_PROFILE='${PROFILE}'
-export OMP_NUM_THREADS="\${OMP_NUM_THREADS:-1}"
-export OPENBLAS_NUM_THREADS="\${OPENBLAS_NUM_THREADS:-1}"
-export VECLIB_MAXIMUM_THREADS="\${VECLIB_MAXIMUM_THREADS:-1}"
-
-option_file=\$(sed -n "\${SLURM_ARRAY_TASK_ID}p" '${MANIFEST}')
-if [[ -z "\${option_file}" ]]; then
-  echo "No option file found for SLURM_ARRAY_TASK_ID=\${SLURM_ARRAY_TASK_ID}" >&2
-  exit 1
-fi
-
-echo '========================================'
-echo 'Test suite: ${TEST_SUITE}'
-echo 'Test name: ${TEST_NAME}'
-echo "Option file: \${option_file}"
-echo 'Started at:' \$(date)
-echo 'Working directory:' \$(pwd)
-echo "SLURM_JOB_ID: \${SLURM_JOB_ID:-unset}"
-echo "SLURM_ARRAY_TASK_ID: \${SLURM_ARRAY_TASK_ID:-unset}"
-echo "SLURM_CPUS_PER_TASK: \${SLURM_CPUS_PER_TASK:-unset}"
-echo 'Thread limits:'
-echo "  OMP_NUM_THREADS=\${OMP_NUM_THREADS}"
-echo "  OPENBLAS_NUM_THREADS=\${OPENBLAS_NUM_THREADS}"
-echo "  VECLIB_MAXIMUM_THREADS=\${VECLIB_MAXIMUM_THREADS}"
-echo 'R library paths:'
-Rscript -e 'print(.libPaths())'
-
-Rscript 'tests/${TEST_SUITE}/main.R' '${TEST_NAME}' "\${option_file}"
-
-echo 'Finished at:' \$(date)
-echo '========================================'
-EOF
-)
-
-AGG_WRAP=$(cat <<EOF
-set -euo pipefail
-
-cd '${PATH_REPO}'
-set -a
-source '${PROJECT_DIR}/.env'
-set +a
-
-export TESTBENCH_PROFILE='${PROFILE}'
-export OMP_NUM_THREADS="\${OMP_NUM_THREADS:-1}"
-export OPENBLAS_NUM_THREADS="\${OPENBLAS_NUM_THREADS:-1}"
-export VECLIB_MAXIMUM_THREADS="\${VECLIB_MAXIMUM_THREADS:-1}"
-
-echo '========================================'
-echo 'Aggregating results for ${TEST_SUITE}/${TEST_NAME}'
-echo 'Started at:' \$(date)
-Rscript 'tests/${TEST_SUITE}/aggregate_results.R' '${TEST_NAME}'
-echo 'Finished at:' \$(date)
-echo '========================================'
-EOF
-)
+PARENT_JOB_SLUG="${TEST_SUITE}_${TEST_NAME}"
+PARENT_JOB_SLUG="${PARENT_JOB_SLUG//[^A-Za-z0-9_]/_}"
+PARENT_JOB_SLUG="${PARENT_JOB_SLUG:0:48}"
+AGG_JOB_NAME="tb_agg_${PARENT_JOB_SLUG}"
+AGG_LOG_DIR="${PATH_LOGS}/slurm/${TEST_SUITE}/${TEST_NAME}"
+mkdir -p "${AGG_LOG_DIR}"
 
 run_sbatch() {
   if is_truthy "${DRY_RUN}"; then
@@ -271,59 +189,194 @@ if [[ -n "${COMPILE_JOB_ID}" ]]; then
   RUN_DEPENDENCY_ARGS=(--dependency="afterok:${COMPILE_JOB_ID}")
 fi
 
-echo "Submitting ${N_OPTIONS} option jobs (${RESOURCE_CLASS}: ${CPUS} CPUs, ${MEM}, ${TIME})..."
-echo "Manifest: ${MANIFEST}"
+RUN_JOB_IDS=()
 
-if is_truthy "${DRY_RUN}"; then
-  run_sbatch \
-    --parsable \
-    --job-name="${RUN_JOB_NAME}" \
-    --array="${ARRAY_SPEC}" \
-    --output="${LOG_DIR}/${RUN_JOB_NAME}_%A_%a.out" \
-    --error="${LOG_DIR}/${RUN_JOB_NAME}_%A_%a.err" \
-    "${RUN_DEPENDENCY_ARGS[@]}" \
-    "${SBATCH_COMMON[@]}" \
-    --wrap="${RUN_WRAP}"
-else
-  RUN_JOB_ID=$(run_sbatch \
-    --parsable \
-    --job-name="${RUN_JOB_NAME}" \
-    --array="${ARRAY_SPEC}" \
-    --output="${LOG_DIR}/${RUN_JOB_NAME}_%A_%a.out" \
-    --error="${LOG_DIR}/${RUN_JOB_NAME}_%A_%a.err" \
-    "${RUN_DEPENDENCY_ARGS[@]}" \
-    "${SBATCH_COMMON[@]}" \
-    --wrap="${RUN_WRAP}")
+for RESOLVED_TEST_NAME in "${RESOLVED_TEST_NAMES[@]}"; do
+  QUEUE_DIR="${PATH_QUEUE}/${TEST_SUITE}/${RESOLVED_TEST_NAME}"
+  if [[ ! -d "${QUEUE_DIR}" ]]; then
+    echo "Error: queue directory not found: ${QUEUE_DIR}" >&2
+    exit 1
+  fi
 
-  echo "Submitted array job: ${RUN_JOB_ID}"
+  OPTION_FILES=()
+  while IFS= read -r option_path; do
+    OPTION_FILES+=("${option_path}")
+  done < <(find "${QUEUE_DIR}" -maxdepth 1 -type f -name '*.json' | sort)
+  if [[ "${#OPTION_FILES[@]}" -eq 0 ]]; then
+    echo "Error: no JSON option files found in ${QUEUE_DIR}" >&2
+    exit 1
+  fi
+
+  THREADING="$(Rscript src/queue_threading_mode.R "${TEST_SUITE}" "${RESOLVED_TEST_NAME}")"
+  if [[ "${THREADING}" == "multi" ]]; then
+    CPUS="${SLURM_MULTI_CPUS:-${MULTITHREAD_CPUS:-${HEAVY_CPUS:-${DEFAULT_CPUS:-1}}}}"
+    MEM="${SLURM_MULTI_MEM:-${MULTITHREAD_MEM:-${HEAVY_MEM:-${DEFAULT_MEM:-8GB}}}}"
+    TIME="${SLURM_MULTI_TIME:-${MULTITHREAD_TIME:-${HEAVY_TIME:-${DEFAULT_TIME:-04:00:00}}}}"
+    RESOURCE_LABEL="multi-thread"
+  else
+    CPUS="${DEFAULT_RUN_CPUS}"
+    MEM="${DEFAULT_RUN_MEM}"
+    TIME="${DEFAULT_RUN_TIME}"
+    RESOURCE_LABEL="${RESOURCE_CLASS}"
+  fi
+
+  LOG_DIR="${PATH_LOGS}/slurm/${TEST_SUITE}/${RESOLVED_TEST_NAME}"
+  mkdir -p "${LOG_DIR}"
+
+  TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
+  MANIFEST="${LOG_DIR}/options_${TIMESTAMP}.txt"
+  for option_path in "${OPTION_FILES[@]}"; do
+    basename "${option_path}"
+  done > "${MANIFEST}"
+
+  N_OPTIONS="${#OPTION_FILES[@]}"
+  ARRAY_SPEC="1-${N_OPTIONS}"
+  if [[ -n "${SLURM_ARRAY_LIMIT:-}" ]]; then
+    ARRAY_SPEC="${ARRAY_SPEC}%${SLURM_ARRAY_LIMIT}"
+  fi
+
+  JOB_SLUG="${TEST_SUITE}_${RESOLVED_TEST_NAME}"
+  JOB_SLUG="${JOB_SLUG//[^A-Za-z0-9_]/_}"
+  JOB_SLUG="${JOB_SLUG:0:48}"
+  RUN_JOB_NAME="tb_${JOB_SLUG}"
+
+  SBATCH_COMMON=(
+    --time="${TIME}"
+    --mem="${MEM}"
+    --cpus-per-task="${CPUS}"
+  )
+
+  if [[ -n "${SLURM_PARTITION:-}" ]]; then
+    SBATCH_COMMON+=(--partition="${SLURM_PARTITION}")
+  fi
+  if [[ -n "${SLURM_ACCOUNT:-}" ]]; then
+    SBATCH_COMMON+=(--account="${SLURM_ACCOUNT}")
+  fi
+  if [[ -n "${SLURM_QOS:-}" ]]; then
+    SBATCH_COMMON+=(--qos="${SLURM_QOS}")
+  fi
+
+  RUN_WRAP=$(cat <<EOF
+set -euo pipefail
+
+cd '${PATH_REPO}'
+set -a
+source '${PROJECT_DIR}/.env'
+set +a
+
+export TESTBENCH_PROFILE='${PROFILE}'
+export OMP_NUM_THREADS="1"
+export OPENBLAS_NUM_THREADS="1"
+export VECLIB_MAXIMUM_THREADS="1"
+
+option_file=\$(sed -n "\${SLURM_ARRAY_TASK_ID}p" '${MANIFEST}')
+if [[ -z "\${option_file}" ]]; then
+  echo "No option file found for SLURM_ARRAY_TASK_ID=\${SLURM_ARRAY_TASK_ID}" >&2
+  exit 1
 fi
+
+echo '========================================'
+echo 'Test suite: ${TEST_SUITE}'
+echo 'Test name: ${RESOLVED_TEST_NAME}'
+echo "Option file: \${option_file}"
+echo 'Started at:' \$(date)
+echo 'Working directory:' \$(pwd)
+echo "SLURM_JOB_ID: \${SLURM_JOB_ID:-unset}"
+echo "SLURM_ARRAY_TASK_ID: \${SLURM_ARRAY_TASK_ID:-unset}"
+echo "SLURM_CPUS_PER_TASK: \${SLURM_CPUS_PER_TASK:-unset}"
+echo 'Thread limits:'
+echo "  OMP_NUM_THREADS=\${OMP_NUM_THREADS}"
+echo "  OPENBLAS_NUM_THREADS=\${OPENBLAS_NUM_THREADS}"
+echo "  VECLIB_MAXIMUM_THREADS=\${VECLIB_MAXIMUM_THREADS}"
+echo 'R library paths:'
+Rscript -e 'print(.libPaths())'
+
+Rscript 'tests/${TEST_SUITE}/main.R' '${RESOLVED_TEST_NAME}' "\${option_file}"
+
+echo 'Finished at:' \$(date)
+echo '========================================'
+EOF
+)
+
+  echo "Submitting ${N_OPTIONS} option jobs for ${RESOLVED_TEST_NAME} (${RESOURCE_LABEL}: ${CPUS} CPUs, ${MEM}, ${TIME}; solver thread env pinned to 1)..."
+  echo "Manifest: ${MANIFEST}"
+
+  if is_truthy "${DRY_RUN}"; then
+    run_sbatch \
+      --parsable \
+      --job-name="${RUN_JOB_NAME}" \
+      --array="${ARRAY_SPEC}" \
+      --output="${LOG_DIR}/${RUN_JOB_NAME}_%A_%a.out" \
+      --error="${LOG_DIR}/${RUN_JOB_NAME}_%A_%a.err" \
+      ${RUN_DEPENDENCY_ARGS[@]+"${RUN_DEPENDENCY_ARGS[@]}"} \
+      "${SBATCH_COMMON[@]}" \
+      --wrap="${RUN_WRAP}"
+    RUN_JOB_IDS+=("<${RESOLVED_TEST_NAME}_array_job_id>")
+  else
+    RUN_JOB_ID=$(run_sbatch \
+      --parsable \
+      --job-name="${RUN_JOB_NAME}" \
+      --array="${ARRAY_SPEC}" \
+      --output="${LOG_DIR}/${RUN_JOB_NAME}_%A_%a.out" \
+      --error="${LOG_DIR}/${RUN_JOB_NAME}_%A_%a.err" \
+      ${RUN_DEPENDENCY_ARGS[@]+"${RUN_DEPENDENCY_ARGS[@]}"} \
+      "${SBATCH_COMMON[@]}" \
+      --wrap="${RUN_WRAP}")
+
+    RUN_JOB_IDS+=("${RUN_JOB_ID}")
+    echo "Submitted array job for ${RESOLVED_TEST_NAME}: ${RUN_JOB_ID}"
+  fi
+done
 
 if is_truthy "${SUBMIT_AGGREGATE}"; then
   AGG_CPUS="${SLURM_AGG_CPUS:-1}"
   AGG_MEM="${SLURM_AGG_MEM:-${DEFAULT_MEM:-8GB}}"
   AGG_TIME="${SLURM_AGG_TIME:-${DEFAULT_TIME:-04:00:00}}"
+  AGG_DEPENDENCY="$(IFS=:; echo "${RUN_JOB_IDS[*]}")"
+
+  AGG_WRAP=$(cat <<EOF
+set -euo pipefail
+
+cd '${PATH_REPO}'
+set -a
+source '${PROJECT_DIR}/.env'
+set +a
+
+export TESTBENCH_PROFILE='${PROFILE}'
+export OMP_NUM_THREADS="1"
+export OPENBLAS_NUM_THREADS="1"
+export VECLIB_MAXIMUM_THREADS="1"
+
+echo '========================================'
+echo 'Aggregating results for ${TEST_SUITE}/${TEST_NAME}'
+echo 'Started at:' \$(date)
+Rscript 'tests/${TEST_SUITE}/aggregate_results.R' '${TEST_NAME}'
+echo 'Finished at:' \$(date)
+echo '========================================'
+EOF
+)
 
   if is_truthy "${DRY_RUN}"; then
     run_sbatch \
       --parsable \
       --job-name="${AGG_JOB_NAME}" \
-      --output="${LOG_DIR}/${AGG_JOB_NAME}_%j.out" \
-      --error="${LOG_DIR}/${AGG_JOB_NAME}_%j.err" \
+      --output="${AGG_LOG_DIR}/${AGG_JOB_NAME}_%j.out" \
+      --error="${AGG_LOG_DIR}/${AGG_JOB_NAME}_%j.err" \
       --time="${AGG_TIME}" \
       --mem="${AGG_MEM}" \
       --cpus-per-task="${AGG_CPUS}" \
-      --dependency="afterok:<array_job_id>" \
+      --dependency="afterok:${AGG_DEPENDENCY}" \
       --wrap="${AGG_WRAP}"
   else
     AGG_JOB_ID=$(run_sbatch \
       --parsable \
       --job-name="${AGG_JOB_NAME}" \
-      --output="${LOG_DIR}/${AGG_JOB_NAME}_%j.out" \
-      --error="${LOG_DIR}/${AGG_JOB_NAME}_%j.err" \
+      --output="${AGG_LOG_DIR}/${AGG_JOB_NAME}_%j.out" \
+      --error="${AGG_LOG_DIR}/${AGG_JOB_NAME}_%j.err" \
       --time="${AGG_TIME}" \
       --mem="${AGG_MEM}" \
       --cpus-per-task="${AGG_CPUS}" \
-      --dependency="afterok:${RUN_JOB_ID}" \
+      --dependency="afterok:${AGG_DEPENDENCY}" \
       --wrap="${AGG_WRAP}")
 
     echo "Submitted aggregate job: ${AGG_JOB_ID}"

@@ -328,11 +328,7 @@ CPP_RGCCA <- function(model_name, data, test_options, path_list) {
   start.time <- Sys.time()
   grid_D <- grid_T <- FALSE
   Sys.unsetenv("DYLD_LIBRARY_PATH")
-  Sys.setenv(
-    OMP_NUM_THREADS = "1",
-    OPENBLAS_NUM_THREADS = "1",
-    VECLIB_MAXIMUM_THREADS = "1"
-  )
+  set_cpp_thread_env(test_options)
   run_cpp <- function(executable) {
     run_cpp_executable(path_list, path_cpp_script, executable, file_name_params)
   }

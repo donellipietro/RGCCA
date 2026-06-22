@@ -4,7 +4,7 @@
 # = ========================================================================== =
 
 if (!exists("rgcca_model_options") ||
-    !exists("rgcca_bootstrap_options")) {
+  !exists("rgcca_bootstrap_options")) {
   source("src/utils/rgcca_options.R")
 }
 
@@ -58,6 +58,73 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
 
     "grey", "grey"
   )
+
+  write_sensitivity_options <- function(lambda_values, threading, model_selection) {
+    options <- list(
+      model_names = model_names[c(6, 9, 12, 15, 18, 21)],
+      model_labels = model_labels[c(6, 9, 12, 15, 18, 21)],
+      model_colors = model_colors[c(6, 9, 12, 15, 18, 21)],
+      cpp_script = "RGCCA",
+      test_options = list(
+        n_reps = 1,
+        varying_options = c("lambda", "sigma_noise"),
+        threading = threading
+      ),
+      domain_and_locations = list(
+        name_mesh = "unit_interval",
+        locs_eq_nodes = FALSE
+      ),
+      dimensions = list(
+        n_groups = 4,
+        n_nodes_D = 101,
+        n_nodes_HR_grid_D = 200,
+        n = 1200,
+        n_locs = 101
+      ),
+      model_options = rgcca_model_options(
+        n_comp = 3,
+        lambda_selection_weights = model_selection,
+        block_deactivation = model_selection,
+        connection_deactivation = model_selection,
+        component_significance = model_selection
+      ),
+      bootstrap_options = rgcca_bootstrap_options(),
+      noise = list(
+        sigma_noise = c(0.01, 1.0, 2.0, 3.0, 4.0, 5.0)
+      ),
+      regularization = list(
+        lambda = lambda_values,
+        lambda_grid = list(
+          10^(-9:-2), 10^(-9:-2), 10^(-9:-2)
+        )
+      )
+    )
+
+    ## File naming policy
+    name_fun <- function(opts_i, comb_row) {
+      paste(
+        name_main_test,
+        ## Include all the varying options!
+        "l",  sprintf("%.0e", comb_row$lambda),
+        "sd", sprintf("%.3f", comb_row$sigma_noise),
+        sep = "_"
+      )
+    }
+
+    ## Expand ONLY the varying options
+    options_list <- explode_options(
+      options,
+      by = options$test_options$varying_options,
+      name_fun = name_fun
+    )
+
+    ## Write JSON files
+    write_options_json(
+      options_list,
+      dir = path_queue,
+      name_field = "name_test"
+    )
+  }
 
   switch(name_main_test,
     testMultivariate = {
@@ -121,68 +188,25 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
       )
     },
     testSensitivity = {
-      options <- list(
-        model_names = model_names[c(6, 9, 12, 15, 18, 21)],
-        model_labels = model_labels[c(6, 9, 12, 15, 18, 21)],
-        model_colors = model_colors[c(6, 9, 12, 15, 18, 21)],
-        cpp_script = "RGCCA",
-        test_options = list(
-          n_reps = 30,
-          varying_options = c("lambda", "sigma_noise")
-        ),
-        domain_and_locations = list(
-          name_mesh = "unit_interval",
-          locs_eq_nodes = FALSE
-        ),
-        dimensions = list(
-          n_groups = 4,
-          n_nodes_D = 101,
-          n_nodes_HR_grid_D = 200,
-          n = 1200,
-          n_locs = 101
-        ),
-        model_options = rgcca_model_options(
-          n_comp = 3,
-          lambda_selection_weights = FALSE,
-          block_deactivation = FALSE,
-          connection_deactivation = FALSE,
-          component_significance = FALSE
-        ),
-        bootstrap_options = rgcca_bootstrap_options(),
-        noise = list(
-          sigma_noise = c(0.01, 1.0, 2.0, 3.0, 4.0, 5.0)
-        ),
-        regularization = list(
-          lambda = c(-1, 0, 10^(-9:-2)),
-          lambda_grid = list(
-            10^(-9:-2), 10^(-9:-2), 10^(-9:-2)
-          )
-        )
-      )
-
-      ## File naming policy
-      name_fun <- function(opts_i, comb_row) {
+      stop(
         paste(
-          name_main_test,
-          ## Include all the varying options!
-          "l",  sprintf("%.0e", comb_row$lambda),
-          "sd", sprintf("%.3f", comb_row$sigma_noise),
-          sep = "_"
+          "testSensitivity is a grouped test. Run one of:",
+          "testSensitivitySingleThread, testSensitivityMultiThread"
         )
-      }
-
-      ## Expand ONLY the varying options
-      options_list <- explode_options(
-        options,
-        by = options$test_options$varying_options,
-        name_fun = name_fun
       )
-
-      ## Write JSON files
-      write_options_json(
-        options_list,
-        dir = path_queue,
-        name_field = "name_test"
+    },
+    testSensitivitySingleThread = {
+      write_sensitivity_options(
+        lambda_values = c(0, 10^(-9:-2)),
+        threading = "single",
+        model_selection = FALSE
+      )
+    },
+    testSensitivityMultiThread = {
+      write_sensitivity_options(
+        lambda_values = -1,
+        threading = "multi",
+        model_selection = FALSE
       )
     },
     testBootstrap = {

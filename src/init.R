@@ -11,6 +11,7 @@ suppressMessages(library(RColorBrewer))
 # Sources ----
 source("src/utils/options.R")
 source("src/utils/directories.R")
+source("src/utils/test_groups.R")
 
 # Select test ----
 
@@ -55,11 +56,18 @@ cfg <- load_config()
 mkdir(c(cfg$PATH_TMP, cfg$PATH_QUEUE))
 path_queue <- config_path(cfg$PATH_QUEUE, test_suite)
 mkdir(path_queue)
-path_queue <- config_path(path_queue, name_main_test)
-mkdir(path_queue)
 
 ## Load the option-generation function
 source(path_generate_options)
 
-## Generate all the options for the selected test
-generate_options(test_suite, name_main_test, path_queue)
+## Generate all the options for the selected test(s)
+resolved_tests <- resolve_test_names(test_suite, name_main_test)
+if (length(resolved_tests) > 1 || !identical(resolved_tests, name_main_test)) {
+  cat("Resolved tests:", paste(resolved_tests, collapse = ", "), "\n\n")
+}
+
+for (test_name in resolved_tests) {
+  path_queue_i <- config_path(path_queue, test_name)
+  mkdir(path_queue_i)
+  generate_options(test_suite, test_name, path_queue_i)
+}
