@@ -61,7 +61,7 @@ test_options <- list(
     n_locs_mult = c(3, 2, 2, 3),
     n_times = c(1200)
   ),
-  model_options = list(          
+  model_options = list(
     n_comp = 3
   ),
   bootstrap_options = list(),
@@ -83,7 +83,7 @@ data <- generate_data(test_options, seed = 0)
 
 # model_name <- "CPP_GCCA_cov"
 # result <- CPP_RGCCA(model_name, data, test_options, path_list)
-# 
+#
 # model_name <- "CPP_fGCCA_cov"
 # result <- CPP_RGCCA(model_name, data, test_options, path_list)
 
@@ -96,7 +96,7 @@ result <- CPP_RGCCA(model_name, data, test_options, path_list)
 id <- 1
 plot_list <- list()
 for(g in 1:4) {
-  for(h in 1:3) { 
+  for(h in 1:3) {
     plot_list[[(g-1)*3 + h]] <- plot.field_points(
       data$locations_D[[g]],
       result$results$A_hat_locs[[g]][,h],
@@ -112,7 +112,7 @@ grid.arrange(plot)
 id <- 1
 plot_list <- list()
 for(g in 1:4) {
-  for(h in 1:3) { 
+  for(h in 1:3) {
     plot_list[[(g-1)*3 + h]] <- plot.field_tile(
       data$grid_D[[g]],
       result$results$A_hat_grid[[g]][,h],
@@ -126,7 +126,7 @@ grid.arrange(plot)
 
 plot_list <- list()
 for(g in 1:4) {
-  for(h in 1:3) { 
+  for(h in 1:3) {
     plot_list[[(g-1)*3 + h]] <- plot.curve_points(
       data$locations_T,
       result$results$E_hat_locs[[g]][,h],

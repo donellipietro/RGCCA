@@ -92,32 +92,32 @@ args <- commandArgs(trailingOnly = TRUE)
 if (length(args) == 0) {
   ## Switch to interactive mode
   INTERACTIVE <- TRUE
-  
+
   ## Load the option-generation function
   source(paste("tests/", test_suite, "/utils/generate_options.R", sep = ""))
-  
+
   ## Select the test you're interested in
   name_main_test <- name_main_test_default
-  
+
   ## Update directories according to the new test
   path_list$queue <- paste0(path_list$queue, name_main_test, "/")
   path_list$logs <- paste0(path_list$logs, name_main_test, "/")
   mkdir(c(path_list$queue, path_list$logs))
-  
+
   ## Generate all the options for that test
   generate_options(test_suite, name_main_test, path_list$queue)
-  
+
   ## Read all the available options
   file_options_list <- sort(list.files(path_list$queue), decreasing = FALSE)
   file_options <- NULL
 } else {
   ## Switch to non-interactive mode
   INTERACTIVE <- FALSE
-  
+
   ## Set the requested configuration
   name_main_test <- args[1]
   file_options <- args[2]
-  
+
   ## Update directories according to the new test
   path_list$queue <- paste0(path_list$queue, name_main_test, "/")
   path_list$logs <- paste0(path_list$logs, name_main_test, "/")
@@ -161,14 +161,14 @@ cat.json(test_options)
 if (RUN$tests) {
   for (batch_idx in 1:test_options$test_options$n_reps) { # batch_idx <- 1
     cat(paste0("\nBatch ", batch_idx, ":\n"))
-    
+
     ## Create batch directory
     path_list$batch <- paste0(path_list$results, "batch_", batch_idx, "/")
     mkdir(path_list$batch)
-    
+
     ### Generate data ----
     cat("- Generate data\n")
-    
+
     ## File names where the results should be found
     file_model_vect <- paste0(path_list$batch, "batch_", batch_idx, "_fitted_model_", test_options$model_names, ".RData")
     file_results_evaluation <- paste0(path_list$batch, "batch_", batch_idx, "_results_evaluation.RData")
@@ -180,9 +180,9 @@ if (RUN$tests) {
         needs_evaluation <- !all(test_options$model_names %in% names(eval_env$results_evaluation))
       }
     }
-    
+
     test_options$batch_index <- batch_idx
-    
+
     ## Generate data only if necessary (no fit found of fit is forced)
     if (any(!file.exists(file_model_vect)) || FORCE_FIT || FORCE_EVALUATE || needs_evaluation) {
       data <- generate_data(
@@ -196,10 +196,10 @@ if (RUN$tests) {
     } else {
       cat("Skipped, data are not necessary!\n")
     }
-    
+
     ## Fit and evaluation ----
     cat("- Fit models\n")
-    
+
     fit_and_evaluate_models(
       path_list = path_list,
       data = data,
@@ -207,7 +207,7 @@ if (RUN$tests) {
       batch_index = batch_idx,
       test_options = test_options
     )
-    
+
   }
 } else {
   cat("Skipped, relying on the saved results!\n")

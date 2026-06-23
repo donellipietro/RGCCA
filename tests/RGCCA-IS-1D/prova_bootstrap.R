@@ -43,104 +43,6 @@ source(paste0("tests/", test_suite, "/utils/wrappers.R"))
 source(paste0("tests/", test_suite, "/utils/generate_data.R"))
 # source(paste0("tests/", test_suite, "/utils/model_evaluation.R"))
 
-plot.curve_bootstrap <- function(
-    locations, f,
-    true = NULL,
-    fit = NULL,
-    w_min = NULL,
-    conf_int = NULL,
-    limits = NULL,
-    LEGEND = FALSE,
-    colors_boot = "grey70") {
-  if (is.null(f)) {
-    return(ggplot() +
-      theme_void())
-  }
-
-  # bootstrap curves: sotto a tutto
-  M <- as_curve_matrix(locations, f, prefix = "boot")
-  data_long <- to_long(locations, M)
-
-  plot <- ggplot() +
-    geom_line(
-      data = data_long,
-      aes(x = x, y = y, group = curve),
-      color = colors_boot,
-      linewidth = 0.25,
-      alpha = 0.75
-    )
-
-  # confidence band opzionale
-  if (!is.null(conf_int)) {
-    CI <- as.data.frame(conf_int)
-    colnames(CI) <- c("lower", "upper")
-    CI$x <- locations
-
-    plot <- plot +
-      geom_ribbon(
-        data = CI,
-        aes(x = x, ymin = lower, ymax = upper),
-        alpha = 0.18,
-        fill = "blue",
-        inherit.aes = FALSE
-      )
-  }
-
-  # fit sui dati veri: nero spesso
-  if (!is.null(fit)) {
-    Fm <- as_curve_matrix(locations, fit, prefix = "fit")
-    data_fit <- to_long(locations, Fm)
-
-    plot <- plot +
-      geom_line(
-        data = data_fit,
-        aes(x = x, y = y),
-        color = "black",
-        linewidth = 1.0
-      )
-  }
-
-  # w_min: rosso, normalizzato fuori o dentro
-  if (!is.null(w_min)) {
-    Wm <- as_curve_matrix(locations, w_min, prefix = "w_min")
-    data_wmin <- to_long(locations, Wm)
-
-    plot <- plot +
-      geom_line(
-        data = data_wmin,
-        aes(x = x, y = y),
-        color = "red",
-        linewidth = 0.9
-      )
-  }
-
-  # true: verde tratteggiato
-  if (!is.null(true)) {
-    Tm <- as_curve_matrix(locations, true, prefix = "true")
-    data_true <- to_long(locations, Tm)
-
-    plot <- plot +
-      geom_line(
-        data = data_true,
-        aes(x = x, y = y),
-        linetype = "dashed",
-        color = "darkgreen",
-        linewidth = 0.9
-      )
-  }
-
-  if (!is.null(limits)) {
-    plot <- plot + ylim(limits[1], limits[2])
-  }
-
-  if (!LEGEND) {
-    plot <- plot + theme(legend.position = "none")
-  }
-
-  plot
-}
-
-
 
 test_options <- list(
   cpp_script = "RGCCA",
@@ -251,7 +153,7 @@ for (h in 1:n_comp) {
   }
 }
 plot <- arrangeGrob(grobs = plot_list, nrow = n_comp)
-plot <- labled_plots_grid(plot,
+plot <- labeled_plots_grid(plot,
   title = "Weights (optimal lambda)",
   labels_cols = paste("Block", 1:4),
   labels_rows = paste("Comp", 1:n_comp)
@@ -310,7 +212,7 @@ if (test_options$model_options$lambda_selection_weights) {
   }
 
   plot <- arrangeGrob(grobs = plot_list, ncol = 4)
-  plot <- labled_plots_grid(plot,
+  plot <- labeled_plots_grid(plot,
     title = "Correlation matrices CI",
     labels_cols = c("Lower", "Estimate", "Upper", "Corrected"), # c("True", "Lower", "Estimate", "Upper"),
     labels_rows = paste("Comp", 1:n_comp)

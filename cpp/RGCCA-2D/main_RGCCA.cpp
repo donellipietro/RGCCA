@@ -15,6 +15,10 @@ using sparse_matrix_t = Eigen::SparseMatrix<double>;
 
 #include "../include/rgcca_driver_options.hpp"
 
+/// @brief Run the C++ RGCCA driver for one JSON parameter file.
+/// @param argc Number of command-line arguments.
+/// @param argv Command-line arguments; argv[1] must be the parameter JSON path.
+/// @return Process exit status.
 int main(int argc, char *argv[]) {
 
   // Check for argument
@@ -48,7 +52,7 @@ int main(int argc, char *argv[]) {
   int n_comp = jroot["model_options"].value("n_comp", 3);
   double tau = jroot["model_options"].value("tau", 0.);
 
-  // Chose options
+  // Choose options
   RGCCA<IndependentSampling>::Options options;
   options.init_strategy = InitStrategy::Uniform;
   rgcca_driver::apply_rgcca_options(jroot["model_options"], options, tau);

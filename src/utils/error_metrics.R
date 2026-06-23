@@ -1,35 +1,22 @@
-# = ========================================================================== =
-# - Script: error_metrics.R
-# - Desc: Utility functions for norms, error metrics, and functional angles.
-# = ========================================================================== =
-
-
-## Function: norm_l2
-# - Args:
-#   * x: numeric vector or matrix
-# - Desc:
-#   Computes the Euclidean (l2) norm of 'x' using t(x) %*% x.
+#' Compute the Euclidean norm of a vector or matrix.
+#'
+#' @param x Input object.
+#' @return The value produced by `norm_l2`.
 norm_l2 <- function(x) {
   return(sqrt(as.numeric(t(x) %*% x)))
 }
-
-
-## Function: norm_A
-# - Args:
-#   * x: numeric vector
-#   * A: symmetric positive-definite matrix defining the inner product
-# - Desc:
-#   Computes the l2 norm in the metric induced by 'A': sqrt(x^T A x).
+#' Compute a norm under a matrix-induced inner product.
+#'
+#' @param x Input object.
+#' @param A Matrix defining the inner product.
+#' @return The value produced by `norm_A`.
 norm_A <- function(x, A) {
   return(sqrt(as.numeric(t(x) %*% A %*% x)))
 }
-
-
-## Function: RMSE
-# - Args:
-#   * x: matrix (n_locs x n_stat_unit) of residuals or errors
-# - Desc:
-#   Computes the root mean squared error over all entries of 'x'.
+#' Compute the root mean squared error over all entries of an object.
+#'
+#' @param x Input object.
+#' @return The value produced by `RMSE`.
 RMSE <- function(x) {
   ## Coerce to matrix
   x <- as.matrix(x)
@@ -39,15 +26,11 @@ RMSE <- function(x) {
   ## Return RMSE
   return(sqrt(sum(x^2) / (n_stat_unit * n_locs)))
 }
-
-
-## Function: IRMSE
-# - Args:
-#   * x: matrix (n_nodes x n_stat_unit) of residual fields
-#   * R0: mass matrix
-# - Desc:
-#   Computes the integrated RMSE using the inner product induced by R0:
-#   sqrt(trace(X^T R0 X) / n_stat_unit).
+#' Compute the integrated root mean squared error using a mass matrix.
+#'
+#' @param x Input object.
+#' @param R0 Mass matrix used for integration.
+#' @return The value produced by `IRMSE`.
 IRMSE <- function(x, R0) {
   ## Coerce to matrix
   x <- as.matrix(x)
@@ -56,16 +39,12 @@ IRMSE <- function(x, R0) {
   ## Return integrated RMSE
   return(sqrt(sum(diag(t(x) %*% R0 %*% x)) / n_stat_unit))
 }
-
-
-## Function: angle_between_functions
-# - Args:
-#   * f1, f2: numeric vectors (functions discretized on nodes)
-#   * R0: mass matrix
-# - Desc:
-#   Computes the angle (in radians) between 'f1' and 'f2' under the
-#   inner product induced by R0:
-#   acos((f1^T R0 f2) / (||f1|| * ||f2||)).
+#' Compute the angle between two discretized functions under a mass matrix.
+#'
+#' @param f1 First discretized function.
+#' @param f2 Second discretized function.
+#' @param R0 Mass matrix used for integration.
+#' @return The value produced by `angle_between_functions`.
 angle_between_functions <- function(f1, f2, R0) {
   ## Compute norms under R0
   norm_f1 <- sqrt(as.numeric(t(f1) %*% R0 %*% f1))

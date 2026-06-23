@@ -4,6 +4,10 @@
 # = ========================================================================== =
 
 
+#' Source a test-suite configuration file into an isolated environment.
+#'
+#' @param test_suite Test-suite directory name.
+#' @return The value produced by `load_test_suite_config_env`.
 load_test_suite_config_env <- function(test_suite) {
   config_file <- file.path("tests", test_suite, "config.R")
   env <- new.env(parent = globalenv())
@@ -15,12 +19,22 @@ load_test_suite_config_env <- function(test_suite) {
 
 
 if (!exists("%||%", mode = "function")) {
+  #' Describe the `%||%` helper used by this repository.
+  #'
+  #' @param x Input object.
+  #' @param y Fallback or comparison value.
+  #' @return The value produced by `%||%`.
   `%||%` <- function(x, y) {
     if (is.null(x) || length(x) == 0) y else x
   }
 }
 
 
+#' Expand requested test names through suite-level test groups.
+#'
+#' @param test_suite Test-suite directory name.
+#' @param name_main_test Main test name or test-group name.
+#' @return The value produced by `resolve_test_names`.
 resolve_test_names <- function(test_suite, name_main_test) {
   env <- load_test_suite_config_env(test_suite)
   test_groups <- if (exists("test_groups", envir = env, inherits = FALSE)) {
@@ -38,6 +52,11 @@ resolve_test_names <- function(test_suite, name_main_test) {
 }
 
 
+#' Resolve the threading mode declared by a test option.
+#'
+#' @param test_options Nested option object loaded from JSON.
+#' @param default Fallback value used when the option is missing.
+#' @return The value produced by `test_threading_mode`.
 test_threading_mode <- function(test_options, default = "single") {
   mode <- NULL
   if (!is.null(test_options$test_options)) {
@@ -52,6 +71,11 @@ test_threading_mode <- function(test_options, default = "single") {
 }
 
 
+#' Read all option JSONs in a queue and return their common threading mode.
+#'
+#' @param path_queue Directory where option JSON files are stored.
+#' @param default Fallback value used when the option is missing.
+#' @return The value produced by `queue_threading_mode`.
 queue_threading_mode <- function(path_queue, default = "single") {
   option_files <- sort(list.files(path_queue, pattern = "\\.json$", full.names = TRUE))
   if (length(option_files) == 0) return(default)

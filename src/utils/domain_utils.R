@@ -1,30 +1,20 @@
-# = ========================================================================== =
-# - Script: domain_utils.R
-# - Desc: Domain and location generation utilities. Provides helpers to
-#         construct simple domains/meshes and to sample measurement locations.
-# = ========================================================================== =
-
-
-# - Function: generate_domain
-# - Args:
-#   * name_mesh: character, domain identifier ("unit_interval" or "unit_square")
-#   * n_nodes: integer, number of nodes to use when constructing the domain/mesh
-# - Desc:
-#   Builds a domain object based on 'name_mesh'. For "unit_interval", returns
-#   a line boundary and 1D knots. For "unit_square", returns a femR mesh, a
-#   polygon boundary, and an fdaPDE mesh. The returned list fields depend on
-#   the selected domain.
+#' Create a supported spatial or temporal domain description.
+#'
+#' @param name_mesh Domain or mesh identifier.
+#' @param n_nodes Number of nodes or grid points to create.
+#' @param T_sec Optional interval length in seconds.
+#' @return The value produced by `generate_domain`.
 generate_domain <- function(name_mesh = "unit_square", n_nodes = 1600, T_sec = NULL) {
   switch(name_mesh,
          unit_interval = {
-           
+
            ## Boundary
            boundary <- extent(0, 1, 0, 0)
            boundary <- as(boundary, "SpatialLines")
-           
+
            ## Knots
            knots <- unit_interval(n_nodes)
-           
+
            return(list(
              d = 1,
              boundary = boundary,
@@ -32,16 +22,16 @@ generate_domain <- function(name_mesh = "unit_square", n_nodes = 1600, T_sec = N
            ))
          },
          interval = {
-           
+
            if(is.null(T_sec)) T_sec = 1
-           
+
            ## Boundary
            boundary <- extent(0, T_sec, 0, 0)
            boundary <- as(boundary, "SpatialLines")
-           
+
            ## Knots
            knots <- unit_interval(n_nodes) * T_sec
-           
+
            return(list(
              d = 1,
              boundary = boundary,
@@ -49,17 +39,17 @@ generate_domain <- function(name_mesh = "unit_square", n_nodes = 1600, T_sec = N
            ))
          },
          unit_square = {
-           
+
            ## Domain
            femr_mesh <- femR::Mesh(unit_square(n_nodes))
-           
+
            ## Boundary
            boundary <- extent(0, 1, 0, 1)
            boundary <- as(boundary, "SpatialPolygons")
-           
+
            ## Mesh fdaPDE1
            fdapde_mesh <- fdaPDE::create.mesh.2D(femr_mesh$nodes())
-           
+
            return(list(
              d = 2,
              femr_mesh = femr_mesh,
@@ -72,18 +62,13 @@ generate_domain <- function(name_mesh = "unit_square", n_nodes = 1600, T_sec = N
          }
   )
 }
-
-
-# - Function: generate_locations
-# - Args:
-#   * domain: list as returned by generate_domain()
-#   * locs_eq_nodes: logical, if TRUE use mesh nodes as locations; otherwise
-#                    sample locations within the domain boundary
-#   * n_locs: integer, number of locations to generate
-# - Desc:
-#   Generates measurement locations. If 'locs_eq_nodes' is TRUE, returns the
-#   mesh nodes from the provided domain. Otherwise, samples 'n_locs'
-#   points (stratified) inside the domain boundary and returns their coordinates.
+#' Generate measurement locations for a domain.
+#'
+#' @param domain Domain object associated with generated data.
+#' @param locs_eq_nodes Whether locations should equal mesh nodes.
+#' @param n_locs Number of locations to generate.
+#' @param type Sampling strategy passed to spatial sampling.
+#' @return The value produced by `generate_locations`.
 generate_locations <- function(domain, locs_eq_nodes, n_locs, type = "stratified") {
   if (locs_eq_nodes) {
     if(domain$d == 2) {

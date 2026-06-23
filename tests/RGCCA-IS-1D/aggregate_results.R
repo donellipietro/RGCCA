@@ -1,5 +1,5 @@
 # = ========================================================================== =
-# - Test: RGCCA - Naive — Aggregate results
+# - Test: RGCCA - Naive - Aggregate results
 # - Desc: Loads quantitative results for all options of a selected test and
 #         returns them as a structured list, then aggregates the data in plots
 # - Args:
@@ -10,8 +10,8 @@ rm(list = ls())
 graphics.off()
 options(warn = -1)
 
-width = 13
-height = 15
+width <- 13
+height <- 15
 
 # README ----
 # Assumes all batches for each option have already been run and saved.
@@ -88,7 +88,7 @@ for (name_main_test in name_main_tests) {
   generate_options(test_suite, name_main_test, path_list_i$queue)
 
   ## Load results (all option combinations, all batches)
-  loaded_results_i <- load_all_quantitiative_results(path_list_i, name_main_test)
+  loaded_results_i <- load_all_quantitative_results(path_list_i, name_main_test)
 
   if (is.null(expected_varying_options)) {
     expected_varying_options <- loaded_results_i$varying_options
@@ -154,7 +154,7 @@ pdf(paste0(path_list$images, "objective.pdf"), width = width, height = height)
 
 #### Objective ----
 data_plot <- loaded_results$objective
-data_plot[, -c(1,2,3)] <- log10(data_plot[, -c(1,2,3)]+0.1)
+data_plot[, -c(1, 2, 3)] <- log10(data_plot[, -c(1, 2, 3)] + 0.1)
 title_prefix <- paste0("log10(Objective) w.r.t")
 values_name <- "log10(Obj)"
 limits <- range(data_plot[loaded_results$model_names])
@@ -171,13 +171,13 @@ dev.off()
 
 
 # #### RMSE[X] at locations ----
-# 
+#
 # ## Set plots parameters
 data_plot <- loaded_results$rmse$X
 # title_prefix <- "RMSE[X] at locations w.r.t the"
 # values_name <- "RMSE"
 # limits <- c(0, max(data_plot[loaded_results$model_names[1:2]]))
-# 
+#
 # ## Plot aggregated results
 # plot.aggregated_data(
 #   loaded_results, data_plot, title_prefix, values_name,
@@ -188,119 +188,49 @@ data_plot <- loaded_results$rmse$X
 n_groups <- 4
 
 
-for(g in 1:n_groups) {
-  
+for (g in 1:n_groups) {
   ## Open a pdf where to save the plots
   pdf(paste0(path_list$images, "rmse_g", g, ".pdf"), width = width, height = height)
-  
+
   #### RMSE[A] at locations ----
   data_plot <- loaded_results$rmse[[paste0("A", g, "_locs")]]
-  title_prefix <- paste0("RMSE[A", g,"] at locations w.r.t")
+  title_prefix <- paste0("RMSE[A", g, "] at locations w.r.t")
   values_name <- "RMSE"
   limits <- c(0, max(data_plot[loaded_results$model_names]))
-  
+
   ## Plot aggregated results
   plot.aggregated_data(
     loaded_results, data_plot, title_prefix, values_name,
     order = order, limits = limits
   )
-  
+
   #### RMSE[A_star] at locations ----
   data_plot <- loaded_results$rmse[[paste0("A_star", g, "_locs")]]
-  title_prefix <- paste0("RMSE[A_star", g,"] at locations w.r.t")
+  title_prefix <- paste0("RMSE[A_star", g, "] at locations w.r.t")
   values_name <- "RMSE"
   limits <- c(0, max(data_plot[loaded_results$model_names]))
-  
+
   ## Plot aggregated results
   plot.aggregated_data(
     loaded_results, data_plot, title_prefix, values_name,
     order = order, limits = limits
   )
-  
+
   #### RMSE[H] at locations ----
   data_plot <- loaded_results$rmse[[paste0("H", g)]]
-  title_prefix <- paste0("RMSE[H", g,"] w.r.t")
+  title_prefix <- paste0("RMSE[H", g, "] w.r.t")
   values_name <- "RMSE"
   limits <- c(0, max(data_plot[loaded_results$model_names]))
-  
+
   ## Plot aggregated results
   plot.aggregated_data(
     loaded_results, data_plot, title_prefix, values_name,
     order = order, limits = limits
   )
-  
+
   dev.off()
 }
 
-# #### RMSE[gcv_scores] at locations ----
-# 
-# if(name_main_test != "test0") {
-#   ## Set plots parameters
-#   data_plot <- loaded_results$rmse$gcv_scores
-#   title_prefix <- "RMSE[gcv_scores] w.r.t the"
-#   values_name <- "RMSE"
-#   limits <- c(0, max(data_plot[loaded_results$model_names[1:2]]))
-#   
-#   ## Plot aggregated results
-#   plot.aggregated_data(
-#     loaded_results, data_plot, title_prefix, values_name,
-#     order = order, limits = limits
-#   )
-# }
-# 
-# 
-# #### RMSE[f] at locations ----
-# 
-# ## Set plots parameters
-# data_plot <- loaded_results$rmse$f_locs
-# title_prefix <- "RMSE[f] at locations w.r.t the"
-# values_name <- "RMSE"
-# limits <- c(0, max(data_plot[loaded_results$model_names]))
-# 
-# ## Plot aggregated results
-# plot.aggregated_data(
-#   loaded_results, data_plot, title_prefix, values_name,
-#   order = order, limits = limits
-# )
-# 
-# #### RMSE[f] at grid ----
-# 
-# ## Set plots parameters
-# data_plot <- loaded_results$rmse$f_grid
-# title_prefix <- "RMSE[f] at grid w.r.t the"
-# values_name <- "RMSE"
-# limits <- c(0, max(data_plot[loaded_results$model_names]))
-# 
-# ## Plot aggregated results
-# plot.aggregated_data(
-#   loaded_results, data_plot, title_prefix, values_name,
-#   order = order, limits = limits
-# )
-# 
-# ## Close pdf
-# dev.off()
-# 
-# 
-# ### Regularization ----
-# 
-# ## Open a pdf where to save the plots
-# pdf(paste0(path_list$images, "regularization.pdf"), width = 15, height = 15)
-# 
-# ## Set plots parameters
-# data_plot <- loaded_results$lambda
-# data_plot[loaded_results$model_names] <- log10(data_plot[loaded_results$model_names])
-# title_prefix <- "lambda selected w.r.t the"
-# values_name <- "lambda"
-# limits <- c(-13, 1)
-# 
-# ## Plot aggregated results
-# plot.aggregated_data(
-#   loaded_results, data_plot, title_prefix, values_name,
-#   order = order, limits = limits
-# )
-# 
-# ## Close pdf
-# dev.off()
 
 ## Open the results directory
 open(path_list$images)

@@ -1,5 +1,15 @@
+#' Generate synthetic data for one test option and random seed.
+#'
+#' @param test_options Nested option object loaded from JSON.
+#' @param seed Random seed.
+#' @return The value produced by `generate_data`.
 generate_data <- function(test_options, seed = 0) {
   ## Helpers ----
+  #' Evaluate the synthetic loading profile for one component id.
+  #'
+  #' @param x Input object.
+  #' @param id Polygon identifier.
+  #' @return The value produced by `a_gen`.
   a_gen <- function(x, id) {
     if (id == 0) {
       return(0 * x)
@@ -32,7 +42,7 @@ generate_data <- function(test_options, seed = 0) {
   if (is.null(delta)) {
     n_locs <- test_options$dimensions$n_locs
     if (is.null(n_locs)) {
-      error("Both delta and n_locs are NULL")
+      stop("Both delta and n_locs are NULL.", call. = FALSE)
     } else {
       delta <- 1 / (n_locs - 1)
     }

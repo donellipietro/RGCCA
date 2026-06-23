@@ -21,4 +21,4 @@ IGNORE_R_OUTPUT = TRUE
 
 ## Defaults
 name_main_test_default <- "testResampling"
-order <- c(1,3,2) # Boxplot grouping | Rows | Cols 
+order <- c(1,3,2) # Boxplot grouping | Rows | Cols

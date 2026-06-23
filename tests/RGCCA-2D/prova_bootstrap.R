@@ -183,7 +183,7 @@ for (h in 1:n_comp) {
   }
 }
 plot <- arrangeGrob(grobs = plot_list_w_fit, nrow = n_comp)
-plot <- labled_plots_grid(plot,
+plot <- labeled_plots_grid(plot,
   title = "Weights",
   labels_cols = paste("Block", 1:4),
   labels_rows = paste("Comp", 1:n_comp)
@@ -191,7 +191,7 @@ plot <- labled_plots_grid(plot,
 grid.arrange(plot)
 
 plot <- arrangeGrob(grobs = plot_list_w_fit_final, nrow = n_comp)
-plot <- labled_plots_grid(plot,
+plot <- labeled_plots_grid(plot,
   title = "Weights final",
   labels_cols = paste("Block", 1:4),
   labels_rows = paste("Comp", 1:n_comp)
@@ -199,7 +199,7 @@ plot <- labled_plots_grid(plot,
 grid.arrange(plot)
 
 plot <- arrangeGrob(grobs = plot_list_w_min, nrow = n_comp)
-plot <- labled_plots_grid(plot,
+plot <- labeled_plots_grid(plot,
   title = "Min. envelope",
   labels_cols = paste("Block", 1:4),
   labels_rows = paste("Comp", 1:n_comp)
@@ -229,7 +229,7 @@ grid.arrange(plot)
 #   }
 # }
 # plot <- arrangeGrob(grobs = plot_list, nrow = n_comp)
-# plot <- labled_plots_grid(plot, title = "Weights",
+# plot <- labeled_plots_grid(plot, title = "Weights",
 #                           labels_cols = paste("Block", 1:4),
 #                           labels_rows = paste("Comp", 1:n_comp))
 # grid.arrange(plot)

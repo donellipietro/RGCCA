@@ -1,3 +1,7 @@
+#' Split a path-list environment variable into usable path entries.
+#'
+#' @param value Value to process.
+#' @return The value produced by `path_entries`.
 path_entries <- function(value) {
   if (is.null(value) || !nzchar(value)) return(character())
 

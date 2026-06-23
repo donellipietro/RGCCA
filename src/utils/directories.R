@@ -1,16 +1,7 @@
-# = ========================================================================== =
-# - Script: directories.R
-# - Desc: Utility functions for managing directory structures used
-#         throughout the testing framework.
-# = ========================================================================== =
-
-
-## Function: mkdir
-# - Args:
-#   * paths: character vector of directory paths to create
-# - Desc:
-#   Checks whether each directory in 'paths' exists.
-#   If it does not, the function creates it.
+#' Create one or more directories if they do not already exist.
+#'
+#' @param paths Character vector of paths.
+#' @return The value produced by `mkdir`.
 mkdir <- function(paths) {
   for (path in paths) {
     if (!file.exists(path)) {
@@ -18,11 +9,9 @@ mkdir <- function(paths) {
     }
   }
 }
-
-
-## Function: load_config
-# - Desc:
-#   Loads the root configuration file if needed and returns the selected profile.
+#' Load the root configuration and return the selected profile.
+#'
+#' @return The value produced by `load_config`.
 load_config <- function() {
   if (!exists("get_config", mode = "function")) {
     source("config.R")
@@ -30,26 +19,20 @@ load_config <- function() {
 
   get_config()
 }
-
-
-## Function: config_path
-# - Desc:
-#   Joins path components and keeps the trailing slash expected by older code.
+#' Join path components and preserve the trailing slash expected by older scripts.
+#'
+#' @param ... Named options or values passed through to the helper.
+#' @return The value produced by `config_path`.
 config_path <- function(...) {
   path <- file.path(...)
   needs_slash <- !grepl("[/\\\\]$", path)
   path[needs_slash] <- paste0(path[needs_slash], .Platform$file.sep)
   path
 }
-
-
-## Function: create_paths
-# - Args:
-#   * test_suite: string, name of the test suite (used to create subdirectories)
-# - Desc:
-#   Creates all necessary directory structures for results, images,
-#   queues, logs, and C++ data/mesh paths. Returns a named list
-#   containing all created paths for downstream use.
+#' Create and return the standard path list for a test suite.
+#'
+#' @param test_suite Test-suite directory name.
+#' @return The value produced by `create_paths`.
 create_paths <- function(test_suite) {
   cfg <- load_config()
 
@@ -91,17 +74,12 @@ create_paths <- function(test_suite) {
 
   return(path_list)
 }
-
-
-## Function: update_paths
-# - Args:
-#   * path_list: list of paths as returned by create_paths()
-#   * name_main_test: string, name of the main test (used for subdirectories)
-#   * test_options: list containing the desired test options
-# - Desc:
-#   Updates the path list to include directories specific to a given
-#   test. Creates result and image subdirectories accordingly and
-#   returns the updated path list.
+#' Extend a path list with directories for one concrete test option.
+#'
+#' @param path_list Named list of repository, output, queue, and temporary paths.
+#' @param name_main_test Main test name or test-group name.
+#' @param test_options Nested option object loaded from JSON.
+#' @return The value produced by `update_paths`.
 update_paths <- function(path_list, name_main_test, test_options) {
   name_test <- test_options$name_test
   if (is.null(name_test) || length(name_test) == 0 || !nzchar(name_test[1])) {
@@ -145,16 +123,9 @@ update_paths <- function(path_list, name_main_test, test_options) {
 
   return(path_list)
 }
-
-
-# - Function: get_script_path
-# - Desc:
-#   Determines and returns the absolute path of the currently running R script.
-#   The function supports execution in different contexts:
-#     1. When run via `Rscript`, it parses `--file=` arguments.
-#     2. When sourced using `source()`, it reads from `sys.frames()`.
-#     3. When executed inside RStudio, it queries the active editor via `rstudioapi`.
-#   If none of these methods succeed, it returns `NULL`.
+#' Return the directory of the currently running or sourced R script.
+#'
+#' @return The value produced by `get_script_path`.
 get_script_path <- function() {
   # Try Rscript
   args <- commandArgs(trailingOnly = FALSE)
@@ -177,25 +148,14 @@ get_script_path <- function() {
   # Fallback
   return(NULL)
 }
-
-## Function: open
-# - Args:
-#   * path: string, file or directory path to open
-# - Desc:
-#   Opens the specified file or directory using the system’s default application.
-#   On Windows, it calls `shell.exec`; on Unix-based systems (macOS, Linux),
-#   it uses the `open` command through the system shell.
+#' Open a file or directory with the operating system default application.
+#'
+#' @param path File or directory path.
+#' @return The value produced by `open`.
 open <- function(path) {
   if (.Platform$OS.type == "windows") {
-    shell.exec(path)
+    return(shell.exec(path))
   } else {
-    system(paste("open", path))
-  }
-}
-open <- function(path) {
-  if (.Platform$OS.type == "windows") {
-    shell.exec(path)
-  } else {
-    system(paste("open", path))
+    return(invisible(system2("open", path)))
   }
 }

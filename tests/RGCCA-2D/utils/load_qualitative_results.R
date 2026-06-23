@@ -2,43 +2,49 @@
 # - Script: load_qualitative_results.R
 # - Desc: Loads model outputs from all simulation batches for qualitative analysis.
 #         Reconstructs functional principal components (fPCs) at multiple spatial
-#         resolutions — knots, observed locations, and a high-resolution grid —
+#         resolutions - knots, observed locations, and a high-resolution grid —
 #         for each model and repetition. Also computes true fPCs at the same grid
 #         for visual comparison.
 # = ========================================================================== =
 
+#' Load fitted model outputs for qualitative plotting.
+#'
+#' @param test_options Nested option object loaded from JSON.
+#' @param data Generated data and truth object.
+#' @param path_list Named list of repository, output, queue, and temporary paths.
+#' @return The value produced by `load_qualitative_results`.
 load_qualitative_results <- function(test_options, data, path_list) {
   cat("\nLoading results for qualitative analysis ...\n")
-  
+
   ## Locations and grid
   locations_D <- data$locations_D
   grid_D <- data$grid_D
   locations_T <- data$locations_T
   grid_T <- data$grid_T
-  
+
   ## Room for solutions
   A_locs <- list()
   E_locs <- list()
   A_grid <- list()
   E_grid <- list()
-  
+
   ## Load batches
   n_reps <- test_options$test_options$n_reps
   for (batch_index in seq_len(n_reps)) { # batch_index <- 1
     tryCatch(
       {
         path_batch <- paste0(path_list$results, "batch_", batch_index, "/")
-        
+
         for (name_model in test_options$model_names) { # name_model <- test_options$model_names[1]
           ## Load model file
           model_file <- paste0(
             path_batch,
             "batch_", batch_index, "_fitted_model_", name_model, ".RData"
           )
-          
+
           load(model_file)
           model <- get(paste0("model_", name_model))
-          
+
           ## Store results
           n_groups <- test_options$dimensions$n_groups
           for(g in 1:n_groups) {
@@ -51,7 +57,7 @@ load_qualitative_results <- function(test_options, data, path_list) {
               E_grid[[paste0(g)]][[name_model]][[batch_index]] <- model$results$E_hat_grid[[g]]
             }
           }
-          
+
 
         }
       },
@@ -68,7 +74,7 @@ load_qualitative_results <- function(test_options, data, path_list) {
     )
     cat(paste("- Batch", batch_index, "loaded\n"))
   }
-  
+
   ## Return results
   return(list(
     model_names = test_options$model_names,

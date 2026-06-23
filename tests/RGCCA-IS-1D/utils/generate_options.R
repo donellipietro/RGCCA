@@ -7,15 +7,12 @@ if (!exists("rgcca_model_options") ||
   !exists("rgcca_bootstrap_options")) {
   source("src/utils/rgcca_options.R")
 }
-
-## Function: generate_options(test_suite, name_main_test, path_queue)
-# - Args:
-#   * test_suite: name of the calling test suite (used for directory structure)
-#   * name_main_test: identifier of the specific test to generate options for
-#   * path_queue: directory where JSON files will be written
-# - Desc:
-#   Defines model parameters, expands selected grid options, and writes the
-#   resulting combinations to JSON files ready for execution.
+#' Generate option JSON files for a test suite and test name.
+#'
+#' @param test_suite Test-suite directory name.
+#' @param name_main_test Main test name or test-group name.
+#' @param path_queue Directory where option JSON files are stored.
+#' @return The value produced by `generate_options`.
 generate_options <- function(test_suite, name_main_test, path_queue) {
   ## Create the directory (if it does not exist yet)
   mkdir(c(path_queue))
@@ -59,6 +56,12 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
     "grey", "grey"
   )
 
+  #' Write one sensitivity-test option grid for a threading mode.
+  #'
+  #' @param lambda_values Lambda values for this option grid.
+  #' @param threading Threading mode token.
+  #' @param model_selection Whether model selection is enabled.
+  #' @return The value produced by `write_sensitivity_options`.
   write_sensitivity_options <- function(lambda_values, threading, model_selection) {
     options <- list(
       model_names = model_names[c(6, 9, 12, 15, 18, 21)],
@@ -101,6 +104,11 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
     )
 
     ## File naming policy
+    #' Build a stable option file stem for one expanded option combination.
+    #'
+    #' @param opts_i Expanded option object.
+    #' @param comb_row One row of the option grid.
+    #' @return The value produced by `name_fun`.
     name_fun <- function(opts_i, comb_row) {
       paste(
         name_main_test,
@@ -164,6 +172,11 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
       )
 
       ## File naming policy
+      #' Build a stable option file stem for one expanded option combination.
+      #'
+      #' @param opts_i Expanded option object.
+      #' @param comb_row One row of the option grid.
+      #' @return The value produced by `name_fun`.
       name_fun <- function(opts_i, comb_row) {
         paste(
           name_main_test,
@@ -254,6 +267,11 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
       )
 
       ## File naming policy
+      #' Build a stable option file stem for one expanded option combination.
+      #'
+      #' @param opts_i Expanded option object.
+      #' @param comb_row One row of the option grid.
+      #' @return The value produced by `name_fun`.
       name_fun <- function(opts_i, comb_row) {
         paste(
           name_main_test,

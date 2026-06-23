@@ -4,11 +4,23 @@
 # = ========================================================================== =
 
 
+#' Describe the `%||%` helper used by this repository.
+#'
+#' @param x Input object.
+#' @param y Fallback or comparison value.
+#' @return The value produced by `%||%`.
 `%||%` <- function(x, y) {
   if (is.null(x) || length(x) == 0) y else x
 }
 
 
+#' Run a compiled C++ executable through the configured runtime wrapper.
+#'
+#' @param path_list Named list of repository, output, queue, and temporary paths.
+#' @param path_cpp_script Directory containing the compiled C++ executable.
+#' @param executable Compiled executable name.
+#' @param file_name_params Name of the JSON parameter file passed to C++.
+#' @return The value produced by `run_cpp_executable`.
 run_cpp_executable <- function(path_list, path_cpp_script, executable, file_name_params) {
   runner <- normalizePath(file.path(path_list$cpp, "run.sh"), mustWork = TRUE)
   status <- system2(
@@ -35,16 +47,33 @@ run_cpp_executable <- function(path_list, path_cpp_script, executable, file_name
 }
 
 
+#' Read a model option with a fallback value.
+#'
+#' @param test_options Nested option object loaded from JSON.
+#' @param name Option or field name.
+#' @param default Fallback value used when the option is missing.
+#' @return The value produced by `model_option`.
 model_option <- function(test_options, name, default = NULL) {
   test_options$model_options[[name]] %||% default
 }
 
 
+#' Read a bootstrap option with a fallback value.
+#'
+#' @param test_options Nested option object loaded from JSON.
+#' @param name Option or field name.
+#' @param default Fallback value used when the option is missing.
+#' @return The value produced by `bootstrap_option`.
 bootstrap_option <- function(test_options, name, default = NULL) {
   test_options$bootstrap_options[[name]] %||% default
 }
 
 
+#' Coerce a loose option value to a logical flag.
+#'
+#' @param x Input object.
+#' @param default Fallback value used when the option is missing.
+#' @return The value produced by `as_option_bool`.
 as_option_bool <- function(x, default = FALSE) {
   if (is.null(x) || length(x) == 0) {
     return(default)
@@ -62,6 +91,11 @@ as_option_bool <- function(x, default = FALSE) {
 }
 
 
+#' Resolve the threading mode declared by a test option.
+#'
+#' @param test_options Nested option object loaded from JSON.
+#' @param default Fallback value used when the option is missing.
+#' @return The value produced by `test_threading_mode`.
 test_threading_mode <- function(test_options, default = "single") {
   mode <- NULL
   if (!is.null(test_options$test_options)) {
@@ -76,6 +110,10 @@ test_threading_mode <- function(test_options, default = "single") {
 }
 
 
+#' Pin solver thread-count environment variables to one.
+#'
+#' @param test_options Nested option object loaded from JSON.
+#' @return The value produced by `set_cpp_thread_env`.
 set_cpp_thread_env <- function(test_options) {
   Sys.setenv(
     OMP_NUM_THREADS = "1",
@@ -86,6 +124,10 @@ set_cpp_thread_env <- function(test_options) {
 }
 
 
+#' Check whether an RGCCA option token means default behavior.
+#'
+#' @param value Value to process.
+#' @return The value produced by `is_default_rgcca_token`.
 is_default_rgcca_token <- function(value) {
   if (is.null(value) || length(value) == 0) {
     return(TRUE)
@@ -98,6 +140,10 @@ is_default_rgcca_token <- function(value) {
 }
 
 
+#' Infer the RGCCA mode corresponding to a tau value.
+#'
+#' @param tau RGCCA tau value or token.
+#' @return The value produced by `rgcca_mode_from_tau`.
 rgcca_mode_from_tau <- function(tau) {
   if (is.character(tau)) {
     token <- tolower(gsub("[_ -]", "", tau[1]))
@@ -120,6 +166,10 @@ rgcca_mode_from_tau <- function(tau) {
 }
 
 
+#' Map a non-negative-weight flag to the C++ option token.
+#'
+#' @param non_negative_weights Whether weights are constrained to be non-negative.
+#' @return The value produced by `rgcca_weight_sign_constraint`.
 rgcca_weight_sign_constraint <- function(non_negative_weights) {
   if (isTRUE(non_negative_weights)) {
     return("NonNegative")
@@ -128,6 +178,13 @@ rgcca_weight_sign_constraint <- function(non_negative_weights) {
 }
 
 
+#' Fill derived RGCCA model options from tau, signs, and connectivity.
+#'
+#' @param model_options Model-option list.
+#' @param tau RGCCA tau value or token.
+#' @param non_negative_weights Whether weights are constrained to be non-negative.
+#' @param C RGCCA connection matrix or token.
+#' @return The value produced by `effective_rgcca_model_options`.
 effective_rgcca_model_options <- function(model_options,
                                           tau = NULL,
                                           non_negative_weights = NULL,
@@ -147,6 +204,12 @@ effective_rgcca_model_options <- function(model_options,
 }
 
 
+#' Resolve the stable name for a test option.
+#'
+#' @param test_options Nested option object loaded from JSON.
+#' @param path_results Directory containing result files.
+#' @param default Fallback value used when the option is missing.
+#' @return The value produced by `test_option_name`.
 test_option_name <- function(test_options, path_results = NULL, default = "manual") {
   name <- test_options$name_test
   if (!is.null(name) && length(name) > 0 && nzchar(name[1])) {
@@ -163,6 +226,11 @@ test_option_name <- function(test_options, path_results = NULL, default = "manua
 }
 
 
+#' Resolve the current batch index from a test option.
+#'
+#' @param test_options Nested option object loaded from JSON.
+#' @param default Fallback value used when the option is missing.
+#' @return The value produced by `test_batch_index`.
 test_batch_index <- function(test_options, default = 1) {
   batch_index <- test_options$batch_index
   if (!is.null(batch_index) && length(batch_index) > 0 && !is.na(batch_index[1])) {
@@ -172,6 +240,12 @@ test_batch_index <- function(test_options, default = 1) {
 }
 
 
+#' Normalize an RGCCA connection matrix into a square binary matrix.
+#'
+#' @param C RGCCA connection matrix or token.
+#' @param n_blocks Expected number of RGCCA blocks.
+#' @param default Fallback value used when the option is missing.
+#' @return The value produced by `normalize_rgcca_C`.
 normalize_rgcca_C <- function(C, n_blocks = NULL, default = NULL) {
   if (is.null(C) || length(C) == 0) {
     C <- default
@@ -224,6 +298,11 @@ normalize_rgcca_C <- function(C, n_blocks = NULL, default = NULL) {
 }
 
 
+#' Resolve the RGCCA connection matrix from test options and data defaults.
+#'
+#' @param test_options Nested option object loaded from JSON.
+#' @param data Generated data and truth object.
+#' @return The value produced by `rgcca_C`.
 rgcca_C <- function(test_options, data = NULL) {
   n_blocks <- test_options$dimensions$n_groups %||%
     if (!is.null(data$C)) nrow(data$C) else NULL
@@ -234,12 +313,19 @@ rgcca_C <- function(test_options, data = NULL) {
 }
 
 
+#' Convert a connection matrix to JSON-friendly row lists.
+#'
+#' @param C RGCCA connection matrix or token.
+#' @return The value produced by `C_to_json`.
 C_to_json <- function(C) {
   C <- normalize_rgcca_C(C)
   lapply(seq_len(nrow(C)), function(i) as.integer(C[i, ] != 0))
 }
 
 
+#' Return default model options for R and C++ RGCCA drivers.
+#'
+#' @return The value produced by `rgcca_model_option_defaults`.
 rgcca_model_option_defaults <- function() {
   list(
     n_comp = 3,
@@ -263,6 +349,9 @@ rgcca_model_option_defaults <- function() {
 }
 
 
+#' Return default bootstrap-selection options for RGCCA drivers.
+#'
+#' @return The value produced by `rgcca_bootstrap_option_defaults`.
 rgcca_bootstrap_option_defaults <- function() {
   list(
     B_max = 5000,
@@ -287,15 +376,27 @@ rgcca_bootstrap_option_defaults <- function() {
 }
 
 
+#' Merge user model options with RGCCA defaults.
+#'
+#' @param model_options Model-option list.
+#' @return The value produced by `resolve_rgcca_model_options`.
 resolve_rgcca_model_options <- function(model_options = list()) {
   model_options <- modifyList(rgcca_model_option_defaults(), model_options %||% list(), keep.null = FALSE)
 }
 
+#' Merge user bootstrap options with RGCCA defaults.
+#'
+#' @param bootstrap_options Bootstrap-option list.
+#' @return The value produced by `resolve_rgcca_bootstrap_options`.
 resolve_rgcca_bootstrap_options <- function(bootstrap_options = list()) {
   bootstrap_options <- modifyList(rgcca_bootstrap_option_defaults(), bootstrap_options %||% list(), keep.null = FALSE)
 }
 
 
+#' Select model options that should be passed to C++ drivers.
+#'
+#' @param model_options Model-option list.
+#' @return The value produced by `collect_cpp_model_options`.
 collect_cpp_model_options <- function(model_options) {
   option_names <- c(
     "max_iter", "tol", "verbose", "cache_covariances", "bias",
@@ -316,6 +417,10 @@ collect_cpp_model_options <- function(model_options) {
   out
 }
 
+#' Select bootstrap options that should be passed to C++ drivers.
+#'
+#' @param bootstrap_options Bootstrap-option list.
+#' @return The value produced by `collect_cpp_bootstrap_options`.
 collect_cpp_bootstrap_options <- function(bootstrap_options) {
   option_names <- c(
     "seed", "max_threads", "B_min",
@@ -343,6 +448,18 @@ collect_cpp_bootstrap_options <- function(bootstrap_options) {
 }
 
 
+#' Build the model-option JSON block consumed by a C++ RGCCA executable.
+#'
+#' @param test_options Nested option object loaded from JSON.
+#' @param data Generated data and truth object.
+#' @param model_name Model identifier from `test_options$model_names`.
+#' @param n_obs Number of observations.
+#' @param tau RGCCA tau value or token.
+#' @param non_negative_weights Whether weights are constrained to be non-negative.
+#' @param lambda_selection_weights Whether C++ should select weight regularization.
+#' @param lambda_for_cpp Lambda value passed to C++.
+#' @param lambda_grid Optional lambda-search grid.
+#' @return The value produced by `cpp_rgcca_model_options`.
 cpp_rgcca_model_options <- function(test_options, data,
                                     model_name,
                                     n_obs, tau,
@@ -371,10 +488,21 @@ cpp_rgcca_model_options <- function(test_options, data,
   model_options
 }
 
+#' Build the bootstrap-option JSON block consumed by C++ drivers.
+#'
+#' @param test_options Nested option object loaded from JSON.
+#' @return The value produced by `cpp_rgcca_bootstrap_options`.
 cpp_rgcca_bootstrap_options <- function(test_options) {
   collect_cpp_bootstrap_options(test_options$bootstrap_options)
 }
 
+#' Build the normalized option bundle stored inside a fitted model object.
+#'
+#' @param test_options Nested option object loaded from JSON.
+#' @param model_options Model-option list.
+#' @param bootstrap_options Bootstrap-option list.
+#' @param C RGCCA connection matrix or token.
+#' @return The value produced by `rgcca_input_options`.
 rgcca_input_options <- function(test_options,
                                 model_options = list(),
                                 bootstrap_options = list(),
@@ -400,6 +528,13 @@ rgcca_input_options <- function(test_options,
 }
 
 
+#' Create the standard model result container used by wrappers.
+#'
+#' @param test_options Nested option object loaded from JSON.
+#' @param model_options Model-option list.
+#' @param bootstrap_options Bootstrap-option list.
+#' @param C RGCCA connection matrix or token.
+#' @return The value produced by `new_rgcca_model`.
 new_rgcca_model <- function(test_options,
                             model_options = list(),
                             bootstrap_options = list(),
@@ -419,6 +554,10 @@ new_rgcca_model <- function(test_options,
 }
 
 
+#' Read a CSV matrix when the file exists.
+#'
+#' @param path File or directory path.
+#' @return The value produced by `read_matrix_if_exists`.
 read_matrix_if_exists <- function(path) {
   if (!file.exists(path)) {
     return(NULL)
@@ -427,6 +566,10 @@ read_matrix_if_exists <- function(path) {
 }
 
 
+#' Read a numeric CSV vector when the file exists.
+#'
+#' @param path File or directory path.
+#' @return The value produced by `read_vector_if_exists`.
 read_vector_if_exists <- function(path) {
   if (!file.exists(path)) {
     return(NULL)
@@ -439,6 +582,10 @@ read_vector_if_exists <- function(path) {
 }
 
 
+#' Read a CSV data frame when the file exists.
+#'
+#' @param path File or directory path.
+#' @return The value produced by `read_data_frame_if_exists`.
 read_data_frame_if_exists <- function(path) {
   if (!file.exists(path)) {
     return(NULL)
@@ -447,11 +594,20 @@ read_data_frame_if_exists <- function(path) {
 }
 
 
+#' Check whether a list contains at least one non-null entry.
+#'
+#' @param x Input object.
+#' @return The value produced by `list_has_values`.
 list_has_values <- function(x) {
   any(vapply(x, function(value) !is.null(value), logical(1)))
 }
 
 
+#' Extract final objectives and histories from RGCCA criterion traces.
+#'
+#' @param crit Criterion history returned by RGCCA.
+#' @param n_comp Number of components.
+#' @return The value produced by `objective_from_crit`.
 objective_from_crit <- function(crit, n_comp) {
   objective <- rep(NA_real_, n_comp)
   history <- vector("list", n_comp)
@@ -470,6 +626,10 @@ objective_from_crit <- function(crit, n_comp) {
 }
 
 
+#' Create a component diagnostics table from objective values.
+#'
+#' @param objective Objective value vector.
+#' @return The value produced by `component_diagnostics_from_objective`.
 component_diagnostics_from_objective <- function(objective) {
   data.frame(
     component = seq_along(objective),
@@ -478,6 +638,11 @@ component_diagnostics_from_objective <- function(objective) {
 }
 
 
+#' Load diagnostics written by a C++ RGCCA executable.
+#'
+#' @param path_results Directory containing result files.
+#' @param n_comp Number of components.
+#' @return The value produced by `load_cpp_diagnostics`.
 load_cpp_diagnostics <- function(path_results, n_comp) {
   out <- list(
     component_diagnostics = read_data_frame_if_exists(
@@ -532,6 +697,13 @@ load_cpp_diagnostics <- function(path_results, n_comp) {
 }
 
 
+#' Attach C++ diagnostics to a model result container.
+#'
+#' @param model Fitted model object in the standard result-container format.
+#' @param diagnostics Diagnostics loaded from C++ CSV outputs.
+#' @param n_comp Number of components.
+#' @param n_groups Number of data blocks.
+#' @return The value produced by `attach_cpp_diagnostics`.
 attach_cpp_diagnostics <- function(model, diagnostics, n_comp, n_groups = NULL) {
   if (list_has_values(diagnostics$objective_history)) {
     model$diagnostics$objective_history <- diagnostics$objective_history
@@ -563,6 +735,13 @@ attach_cpp_diagnostics <- function(model, diagnostics, n_comp, n_groups = NULL) 
 }
 
 
+#' Load bootstrap-selection artifacts written by a C++ RGCCA executable.
+#'
+#' @param path_results Directory containing result files.
+#' @param n_comp Number of components.
+#' @param n_groups Number of data blocks.
+#' @param grid_D Whether spatial grid outputs should be loaded.
+#' @return The value produced by `load_cpp_bootstrap_selection`.
 load_cpp_bootstrap_selection <- function(path_results, n_comp, n_groups, grid_D = FALSE) {
   bootstrap <- vector("list", n_comp)
   any_generated <- FALSE
@@ -721,11 +900,19 @@ load_cpp_bootstrap_selection <- function(path_results, n_comp, n_groups, grid_D 
 }
 
 
+#' Create a normalized RGCCA model-options list from named arguments.
+#'
+#' @param ... Named options or values passed through to the helper.
+#' @return The value produced by `rgcca_model_options`.
 rgcca_model_options <- function(...) {
   resolve_rgcca_model_options(list(...))
 }
 
 
+#' Create a normalized RGCCA bootstrap-options list from named arguments.
+#'
+#' @param ... Named options or values passed through to the helper.
+#' @return The value produced by `rgcca_bootstrap_options`.
 rgcca_bootstrap_options <- function(...) {
   resolve_rgcca_bootstrap_options(list(...))
 }

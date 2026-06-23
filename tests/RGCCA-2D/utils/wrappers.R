@@ -11,11 +11,13 @@ if (!exists("collect_cpp_model_options") ||
     !exists("effective_rgcca_model_options")) {
   source("src/utils/rgcca_options.R")
 }
-
-
-## Function: fit_model
-# - Desc:
-#   Dispatches to the appropriate model-fitting routine depending on `model_name`.
+#' Dispatch one model name to the matching R or C++ fitting wrapper.
+#'
+#' @param model_name Model identifier from `test_options$model_names`.
+#' @param data Generated data and truth object.
+#' @param path_list Named list of repository, output, queue, and temporary paths.
+#' @param test_options Nested option object loaded from JSON.
+#' @return The value produced by `fit_model`.
 fit_model <- function(model_name, data, path_list, test_options) {
   switch(model_name,
     R_GCCA_cor = return(R_RGCCA(model_name, data, test_options)),
@@ -43,8 +45,14 @@ fit_model <- function(model_name, data, path_list, test_options) {
 }
 
 
+#' Fit a multivariate RGCCA model with the R package backend.
+#'
+#' @param model_name Model identifier from `test_options$model_names`.
+#' @param data Generated data and truth object.
+#' @param test_options Nested option object loaded from JSON.
+#' @return The value produced by `R_RGCCA`.
 R_RGCCA <- function(model_name, data, test_options) {
-  ## Get all the necessary info form data and test_options
+  ## Get all the necessary info from data and test_options
   n_groups <- test_options$dimensions$n_groups
   n_comp <- model_option(test_options, "n_comp", rgcca_model_option_defaults()$n_comp)
   blocks <- data$X
@@ -156,6 +164,13 @@ R_RGCCA <- function(model_name, data, test_options) {
 }
 
 
+#' Fit an RGCCA-family model through the compiled C++ backend.
+#'
+#' @param model_name Model identifier from `test_options$model_names`.
+#' @param data Generated data and truth object.
+#' @param test_options Nested option object loaded from JSON.
+#' @param path_list Named list of repository, output, queue, and temporary paths.
+#' @return The value produced by `CPP_RGCCA`.
 CPP_RGCCA <- function(model_name, data, test_options, path_list) {
   ## Info
   n_comp <- model_option(test_options, "n_comp", rgcca_model_option_defaults()$n_comp)
@@ -314,6 +329,10 @@ CPP_RGCCA <- function(model_name, data, test_options, path_list) {
   grid_D <- grid_T <- FALSE
   Sys.unsetenv("DYLD_LIBRARY_PATH")
   set_cpp_thread_env(test_options)
+  #' Run the selected C++ executable for the current wrapper call.
+  #'
+  #' @param executable Compiled executable name.
+  #' @return The value produced by `run_cpp`.
   run_cpp <- function(executable) {
     run_cpp_executable(path_list, path_cpp_script, executable, file_name_params)
   }

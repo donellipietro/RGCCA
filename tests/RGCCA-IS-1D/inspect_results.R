@@ -50,6 +50,10 @@ source("src/utils/error_metrics.R")
 source("src/utils/plotting_utils.R")
 source("src/utils/load_results_utils.R")
 
+#' Source an R file only when it is present.
+#'
+#' @param path File or directory path.
+#' @return The value produced by `source_if_exists`.
 source_if_exists <- function(path) {
   if (file.exists(path)) source(path)
 }
@@ -79,32 +83,32 @@ args <- commandArgs(trailingOnly = TRUE)
 if (length(args) == 0) {
   ## Switch to interactive mode
   INTERACTIVE <- TRUE
-  
+
   ## Load the option-generation function
   source(paste("tests/", test_suite, "/utils/generate_options.R", sep = ""))
-  
+
   ## Select the test you're interested in
   name_main_test <- name_main_test_default
-  
+
   ## Update directories according to the new test
   path_list$queue <- paste0(path_list$queue, name_main_test, "/")
   path_list$logs <- paste0(path_list$logs, name_main_test, "/")
   mkdir(c(path_list$queue, path_list$logs))
-  
+
   ## Generate all the options for that test
   generate_options(test_suite, name_main_test, path_list$queue)
-  
+
   ## Read all the available options
   file_options_list <- sort(list.files(path_list$queue), decreasing = FALSE)
   file_options <- NULL
 } else {
   ## Switch to non-interactive mode
   INTERACTIVE <- FALSE
-  
+
   ## Set the requested configuration
   name_main_test <- args[1]
   file_options <- args[2]
-  
+
   ## Update directories according to the new test
   path_list$queue <- paste0(path_list$queue, name_main_test, "/")
   path_list$logs <- paste0(path_list$logs, name_main_test, "/")

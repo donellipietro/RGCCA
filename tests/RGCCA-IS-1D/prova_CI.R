@@ -36,6 +36,11 @@ source(paste0(path_this, "config.R"))
 source(paste0("tests/", test_suite, "/utils/wrappers.R"))
 source(paste0("tests/", test_suite, "/utils/generate_data.R"))
 
+#' Compute pointwise bootstrap confidence intervals from resamples.
+#'
+#' @param W_boot Bootstrap weight matrix.
+#' @param conf.level Confidence level.
+#' @return The value produced by `ci_from_boot`.
 ci_from_boot <- function(W_boot, conf.level = 0.95) {
   alpha <- (1 - conf.level) / 2
   cbind(
@@ -44,10 +49,20 @@ ci_from_boot <- function(W_boot, conf.level = 0.95) {
   )
 }
 
+#' Compute the biased covariance used by the bootstrap check script.
+#'
+#' @param u First numeric vector.
+#' @param v Second numeric vector.
+#' @return The value produced by `biased_cov`.
 biased_cov <- function(u, v) {
   (sum(u * v) - length(u) * mean(u) * mean(v)) / length(u)
 }
 
+#' Compute a correlation from two component score vectors.
+#'
+#' @param eta_j First score vector.
+#' @param eta_k Second score vector.
+#' @return The value produced by `corr_from_eta`.
 corr_from_eta <- function(eta_j, eta_k) {
   var_j <- biased_cov(eta_j, eta_j)
   var_k <- biased_cov(eta_k, eta_k)
@@ -59,6 +74,12 @@ corr_from_eta <- function(eta_j, eta_k) {
   biased_cov(eta_j, eta_k) / sqrt(var_j * var_k)
 }
 
+#' Compute correlation confidence intervals from bootstrap weights.
+#'
+#' @param w_boot_locs Bootstrap weights evaluated at locations.
+#' @param X_blocks List of data blocks.
+#' @param conf.level Confidence level.
+#' @return The value produced by `corr_ci_from_boot`.
 corr_ci_from_boot <- function(w_boot_locs, X_blocks, conf.level = 0.95) {
   alpha <- (1 - conf.level) / 2
   eps <- 1e-12
@@ -94,12 +115,23 @@ corr_ci_from_boot <- function(w_boot_locs, X_blocks, conf.level = 0.95) {
   list(lower = lower, upper = upper)
 }
 
+#' Load raw component CSV files from temporary C++ results.
+#'
+#' @param path_tmp_results Directory containing temporary C++ result files.
+#' @param n_groups Number of data blocks.
+#' @return The value produced by `load_raw_components`.
 load_raw_components <- function(path_tmp_results, n_groups) {
   lapply(seq_len(n_groups), function(g) {
     as.matrix(read.csv(paste0(path_tmp_results, "E", g, "_hat_locs.csv")))
   })
 }
 
+#' Reconstruct blocks deflated up to a selected component.
+#'
+#' @param data Generated data and truth object.
+#' @param raw_components Raw component matrices.
+#' @param component Component index.
+#' @return The value produced by `deflated_blocks_for_component`.
 deflated_blocks_for_component <- function(data, raw_components, component) {
   X_blocks <- data$X
 
@@ -122,6 +154,17 @@ deflated_blocks_for_component <- function(data, raw_components, component) {
   X_blocks
 }
 
+#' Compare confidence intervals from R and C++ calculations.
+#'
+#' @param r_ci Confidence interval computed in R.
+#' @param cpp_ci Confidence interval computed in C++.
+#' @param component Component index.
+#' @param block Block index.
+#' @param lambda_index Lambda-grid index.
+#' @param lambda Lambda value.
+#' @param scale Scale label.
+#' @param source Source label.
+#' @return The value produced by `compare_ci`.
 compare_ci <- function(r_ci, cpp_ci, component, block, lambda_index, lambda, scale, source) {
   if (is.null(cpp_ci)) {
     return(data.frame(

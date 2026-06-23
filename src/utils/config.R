@@ -6,6 +6,10 @@
 
 # Helpers ----
 
+#' Return the first non-empty value among the supplied arguments.
+#'
+#' @param ... Named options or values passed through to the helper.
+#' @return The value produced by `first_non_empty`.
 first_non_empty <- function(...) {
   values <- list(...)
   for (value in values) {
@@ -17,20 +21,40 @@ first_non_empty <- function(...) {
   ""
 }
 
+#' Read a `TESTBENCH_*` environment override with a fallback value.
+#'
+#' @param name Option or field name.
+#' @param default Fallback value used when the option is missing.
+#' @return The value produced by `config_env`.
 config_env <- function(name, default = "") {
   first_non_empty(Sys.getenv(paste0("TESTBENCH_", name), unset = ""), default)
 }
 
+#' Resolve one configuration value from a profile and environment overrides.
+#'
+#' @param cfg Configuration profile list.
+#' @param name Option or field name.
+#' @param default Fallback value used when the option is missing.
+#' @return The value produced by `config_value`.
 config_value <- function(cfg, name, default = "") {
   value <- if (!is.null(cfg[[name]])) cfg[[name]] else default
   config_env(name, value)
 }
 
+#' Convert a value to the scalar string format used in `.env` files.
+#'
+#' @param value Value to process.
+#' @return The value produced by `as_scalar_character`.
 as_scalar_character <- function(value) {
   if (is.null(value) || length(value) == 0) return("")
   paste(as.character(value), collapse = ",")
 }
 
+#' Compare two paths after expansion and normalization.
+#'
+#' @param path_a First path to compare.
+#' @param path_b Second path to compare.
+#' @return The value produced by `same_path`.
 same_path <- function(path_a, path_b) {
   if (is.na(path_a) || is.na(path_b)) return(FALSE)
 
@@ -38,6 +62,10 @@ same_path <- function(path_a, path_b) {
     normalizePath(path.expand(path_b), mustWork = FALSE)
 }
 
+#' Fill derived repository paths that are omitted by a profile.
+#'
+#' @param cfg Configuration profile list.
+#' @return The value produced by `add_derived_paths`.
 add_derived_paths <- function(cfg) {
   cfg$PATH_REPO <- config_value(cfg, "PATH_REPO")
   cfg$PATH_TMP <- config_value(cfg, "PATH_TMP", file.path(cfg$PATH_REPO, "tmp"))
@@ -59,6 +87,10 @@ add_derived_paths <- function(cfg) {
   cfg
 }
 
+#' Apply environment overrides to every field in a configuration profile.
+#'
+#' @param cfg Configuration profile list.
+#' @return The value produced by `apply_overrides`.
 apply_overrides <- function(cfg) {
   for (name in names(cfg)) {
     cfg[[name]] <- config_env(name, cfg[[name]])
@@ -69,6 +101,9 @@ apply_overrides <- function(cfg) {
 
 # Public API ----
 
+#' List the runtime profiles declared by the root configuration file.
+#'
+#' @return The value produced by `available_profiles`.
 available_profiles <- function() {
   if (!exists("TESTBENCH_CONFIG_PROFILES", envir = .GlobalEnv)) {
     return(character())
@@ -77,6 +112,10 @@ available_profiles <- function() {
   names(get("TESTBENCH_CONFIG_PROFILES", envir = .GlobalEnv))
 }
 
+#' Load, validate, and complete the selected runtime profile.
+#'
+#' @param profile Runtime profile name.
+#' @return The value produced by `get_config`.
 get_config <- function(profile = Sys.getenv("TESTBENCH_PROFILE", "macbook")) {
   profile <- first_non_empty(profile, "macbook")
 
@@ -103,6 +142,10 @@ get_config <- function(profile = Sys.getenv("TESTBENCH_PROFILE", "macbook")) {
   cfg
 }
 
+#' Print all values in a runtime profile.
+#'
+#' @param cfg Configuration profile list.
+#' @return The value produced by `print_config`.
 print_config <- function(cfg = get_config()) {
   width <- max(nchar(names(cfg)))
   for (name in names(cfg)) {
@@ -111,6 +154,10 @@ print_config <- function(cfg = get_config()) {
   invisible(cfg)
 }
 
+#' Return the directories that the active profile may generate.
+#'
+#' @param cfg Configuration profile list.
+#' @return The value produced by `config_generated_dirs`.
 config_generated_dirs <- function(cfg = get_config()) {
   unique(unname(c(
     cfg$PATH_RESULTS,
@@ -125,6 +172,10 @@ config_generated_dirs <- function(cfg = get_config()) {
   )))
 }
 
+#' Return root-level shortcut links for generated directories.
+#'
+#' @param cfg Configuration profile list.
+#' @return The value produced by `config_root_links`.
 config_root_links <- function(cfg = get_config()) {
   c(
     results = cfg$PATH_RESULTS,
@@ -135,6 +186,10 @@ config_root_links <- function(cfg = get_config()) {
   )
 }
 
+#' Create root-level symlinks for generated directories outside the repository.
+#'
+#' @param cfg Configuration profile list.
+#' @return The value produced by `create_config_links`.
 create_config_links <- function(cfg = get_config()) {
   links <- config_root_links(cfg)
 
@@ -176,6 +231,10 @@ create_config_links <- function(cfg = get_config()) {
   invisible(links)
 }
 
+#' Remove root-level symlinks created for generated directories.
+#'
+#' @param cfg Configuration profile list.
+#' @return The value produced by `remove_config_links`.
 remove_config_links <- function(cfg = get_config()) {
   links <- config_root_links(cfg)
 
@@ -192,6 +251,10 @@ remove_config_links <- function(cfg = get_config()) {
   invisible(links)
 }
 
+#' Create generated directories and root-level links for a profile.
+#'
+#' @param cfg Configuration profile list.
+#' @return The value produced by `create_config_dirs`.
 create_config_dirs <- function(cfg = get_config()) {
   dirs <- config_generated_dirs(cfg)
   dirs <- dirs[nzchar(dirs)]
@@ -204,6 +267,11 @@ create_config_dirs <- function(cfg = get_config()) {
   invisible(dirs)
 }
 
+#' Write the selected profile to a shell-readable `.env` file.
+#'
+#' @param cfg Configuration profile list.
+#' @param env_file Path where the env file should be written.
+#' @return The value produced by `write_env`.
 write_env <- function(cfg = get_config(),
                       env_file = file.path(cfg$PATH_REPO, ".env")) {
   env_values <- vapply(cfg, as_scalar_character, character(1))
@@ -218,6 +286,9 @@ write_env <- function(cfg = get_config(),
 
 # CLI ----
 
+#' Print command-line usage for `config.R`.
+#'
+#' @return The value produced by `config_usage`.
 config_usage <- function() {
   cat(
     "Usage:\n",
@@ -233,6 +304,10 @@ config_usage <- function() {
   )
 }
 
+#' Parse command-line arguments accepted by `config.R`.
+#'
+#' @param args Command-line argument vector.
+#' @return The value produced by `parse_config_cli`.
 parse_config_cli <- function(args) {
   out <- list(
     profile = Sys.getenv("TESTBENCH_PROFILE", "macbook"),
@@ -280,6 +355,10 @@ parse_config_cli <- function(args) {
   out
 }
 
+#' Detect whether the root configuration file is being executed as a script.
+#'
+#' @param config_file Configuration file expected for CLI detection.
+#' @return The value produced by `config_is_cli`.
 config_is_cli <- function(config_file = "config.R") {
   file_arg <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
   if (length(file_arg) == 0) return(FALSE)
@@ -290,6 +369,9 @@ config_is_cli <- function(config_file = "config.R") {
   identical(cli_file, expected_file)
 }
 
+#' Run the command-line entry point for profile management.
+#'
+#' @return The value produced by `config_main`.
 config_main <- function() {
   args <- parse_config_cli(commandArgs(trailingOnly = TRUE))
 
