@@ -15,8 +15,8 @@ Options:
 
 Environment options:
   SLURM_COMPILE_CPUS      Compile job cpus-per-task (default: 1)
-  SLURM_COMPILE_MEM       Compile job memory (default: HEAVY_MEM or DEFAULT_MEM)
-  SLURM_COMPILE_TIME      Compile job walltime (default: HEAVY_TIME or DEFAULT_TIME)
+  SLURM_COMPILE_MEM       Compile job memory (default: DEFAULT_MEM)
+  SLURM_COMPILE_TIME      Compile job walltime (default: DEFAULT_TIME)
   SLURM_DRY_RUN           Print sbatch command without submitting (0/1)
   SLURM_PARTITION         Optional Slurm partition
   SLURM_ACCOUNT           Optional Slurm account
@@ -174,8 +174,8 @@ case "$1" in
 esac
 
 CPUS="${SLURM_COMPILE_CPUS:-${COMPILE_CPUS:-1}}"
-MEM="${SLURM_COMPILE_MEM:-${COMPILE_MEM:-${HEAVY_MEM:-${DEFAULT_MEM:-16GB}}}}"
-TIME="${SLURM_COMPILE_TIME:-${COMPILE_TIME:-${HEAVY_TIME:-${DEFAULT_TIME:-04:00:00}}}}"
+MEM="${SLURM_COMPILE_MEM:-${COMPILE_MEM:-${DEFAULT_MEM:-16GB}}}"
+TIME="${SLURM_COMPILE_TIME:-${COMPILE_TIME:-${DEFAULT_TIME:-04:00:00}}}"
 LOG_DIR="${PATH_LOGS}/slurm/compile"
 mkdir -p "${LOG_DIR}"
 

@@ -5,7 +5,6 @@ RSCRIPT ?= Rscript
 
 ACTIVE_ENV_PROFILE := $(strip $(shell if [ -f .env ]; then set -a; . ./.env >/dev/null 2>&1; printf '%s' "$$TESTBENCH_PROFILE"; fi))
 TESTBENCH_PROFILE ?= $(if $(ACTIVE_ENV_PROFILE),$(ACTIVE_ENV_PROFILE),macbook)
-SLURM_RESOURCES ?= default
 SLURM_ARRAY_LIMIT ?=
 SLURM_COMPILE ?= 0
 SLURM_AGGREGATE ?= 1
@@ -243,7 +242,7 @@ run_test_parallel: ensure_env
 # usage: make run_test_slurm TEST_SUITE=centering TEST_NAME=test1
 run_test_slurm:
 	@if [ -z "$(TEST_SUITE)" ] || [ -z "$(TEST_NAME)" ]; then \
-		echo "Usage: make run_test_slurm TEST_SUITE=<suite> TEST_NAME=<test_name> [SLURM_RESOURCES=default|heavy]"; \
+		echo "Usage: make run_test_slurm TEST_SUITE=<suite> TEST_NAME=<test_name>"; \
 		echo ""; \
 		echo "Available TEST_SUITEs:"; \
 		find tests -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort | \
@@ -252,7 +251,6 @@ run_test_slurm:
 		exit 0; \
 	else \
 		echo "Submitting to Slurm: $(TEST_NAME) from suite $(TEST_SUITE)"; \
-		SLURM_RESOURCES="$(SLURM_RESOURCES)" \
 		SLURM_ARRAY_LIMIT="$(SLURM_ARRAY_LIMIT)" \
 		SLURM_COMPILE="$(SLURM_COMPILE)" \
 		SLURM_AGGREGATE="$(SLURM_AGGREGATE)" \

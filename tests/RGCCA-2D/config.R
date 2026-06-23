@@ -25,6 +25,11 @@ IGNORE_R_OUTPUT = TRUE
 ## Defaults
 name_main_test_default <- "testResampling"
 test_groups <- list(
-  testSensitivity = c("testSensitivitySingleThread", "testSensitivityMultiThread")
+  testSensitivity = c("testSensitivitySingleThread", "testSensitivityMultiThread"),
+  all = c(
+    "testSensitivitySingleThread",
+    "testSensitivityMultiThread",
+    "testResampling"
+  )
 )
 order <- c(1,3,2) # Boxplot grouping | Rows | Cols

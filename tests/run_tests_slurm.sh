@@ -12,7 +12,6 @@ Usage:
 
 Environment options:
   Active profile is read from .env. Switch it with make build first.
-  SLURM_RESOURCES     Resource class: default or heavy (default: default)
   SLURM_CPUS          Override cpus-per-task
   SLURM_MEM           Override memory
   SLURM_TIME          Override walltime
@@ -56,7 +55,6 @@ TEST_NAME="$2"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-RESOURCE_CLASS="${SLURM_RESOURCES:-default}"
 DRY_RUN="${SLURM_DRY_RUN:-0}"
 COMPILE_BEFORE_SUBMIT="${SLURM_COMPILE:-0}"
 SUBMIT_AGGREGATE="${SLURM_AGGREGATE:-1}"
@@ -97,27 +95,13 @@ ensure_config_var() {
 
 for config_name in \
   DEFAULT_CPUS DEFAULT_MEM DEFAULT_TIME \
-  HEAVY_CPUS HEAVY_MEM HEAVY_TIME \
   MULTITHREAD_CPUS MULTITHREAD_MEM MULTITHREAD_TIME; do
   ensure_config_var "${config_name}"
 done
 
-case "${RESOURCE_CLASS}" in
-  default)
-    DEFAULT_RUN_CPUS="${SLURM_CPUS:-${DEFAULT_CPUS:-1}}"
-    DEFAULT_RUN_MEM="${SLURM_MEM:-${DEFAULT_MEM:-8GB}}"
-    DEFAULT_RUN_TIME="${SLURM_TIME:-${DEFAULT_TIME:-04:00:00}}"
-    ;;
-  heavy)
-    DEFAULT_RUN_CPUS="${SLURM_CPUS:-${HEAVY_CPUS:-${DEFAULT_CPUS:-1}}}"
-    DEFAULT_RUN_MEM="${SLURM_MEM:-${HEAVY_MEM:-${DEFAULT_MEM:-8GB}}}"
-    DEFAULT_RUN_TIME="${SLURM_TIME:-${HEAVY_TIME:-${DEFAULT_TIME:-04:00:00}}}"
-    ;;
-  *)
-    echo "Error: SLURM_RESOURCES must be 'default' or 'heavy'." >&2
-    exit 1
-    ;;
-esac
+DEFAULT_RUN_CPUS="${SLURM_CPUS:-${DEFAULT_CPUS:-1}}"
+DEFAULT_RUN_MEM="${SLURM_MEM:-${DEFAULT_MEM:-8GB}}"
+DEFAULT_RUN_TIME="${SLURM_TIME:-${DEFAULT_TIME:-04:00:00}}"
 
 echo "Preparing queue for ${TEST_SUITE}/${TEST_NAME} using profile ${PROFILE}..."
 Rscript src/init.R "${TEST_SUITE}" "${TEST_NAME}"
@@ -190,6 +174,21 @@ if [[ -n "${COMPILE_JOB_ID}" ]]; then
 fi
 
 RUN_JOB_IDS=()
+RUN_TEST_NAMES=()
+RUN_JOB_IDS_BY_TEST=()
+
+run_job_id_for_test() {
+  local test_name="$1"
+  local idx
+  for idx in "${!RUN_TEST_NAMES[@]}"; do
+    if [[ "${RUN_TEST_NAMES[$idx]}" == "${test_name}" ]]; then
+      printf '%s' "${RUN_JOB_IDS_BY_TEST[$idx]}"
+      return 0
+    fi
+  done
+
+  return 1
+}
 
 for RESOLVED_TEST_NAME in "${RESOLVED_TEST_NAMES[@]}"; do
   QUEUE_DIR="${PATH_QUEUE}/${TEST_SUITE}/${RESOLVED_TEST_NAME}"
@@ -209,15 +208,15 @@ for RESOLVED_TEST_NAME in "${RESOLVED_TEST_NAMES[@]}"; do
 
   THREADING="$(Rscript src/queue_threading_mode.R "${TEST_SUITE}" "${RESOLVED_TEST_NAME}")"
   if [[ "${THREADING}" == "multi" ]]; then
-    CPUS="${SLURM_MULTI_CPUS:-${MULTITHREAD_CPUS:-${HEAVY_CPUS:-${DEFAULT_CPUS:-1}}}}"
-    MEM="${SLURM_MULTI_MEM:-${MULTITHREAD_MEM:-${HEAVY_MEM:-${DEFAULT_MEM:-8GB}}}}"
-    TIME="${SLURM_MULTI_TIME:-${MULTITHREAD_TIME:-${HEAVY_TIME:-${DEFAULT_TIME:-04:00:00}}}}"
+    CPUS="${SLURM_MULTI_CPUS:-${MULTITHREAD_CPUS:-${DEFAULT_CPUS:-1}}}"
+    MEM="${SLURM_MULTI_MEM:-${MULTITHREAD_MEM:-${DEFAULT_MEM:-8GB}}}"
+    TIME="${SLURM_MULTI_TIME:-${MULTITHREAD_TIME:-${DEFAULT_TIME:-04:00:00}}}"
     RESOURCE_LABEL="multi-thread"
   else
     CPUS="${DEFAULT_RUN_CPUS}"
     MEM="${DEFAULT_RUN_MEM}"
     TIME="${DEFAULT_RUN_TIME}"
-    RESOURCE_LABEL="${RESOURCE_CLASS}"
+    RESOURCE_LABEL="default"
   fi
 
   LOG_DIR="${PATH_LOGS}/slurm/${TEST_SUITE}/${RESOLVED_TEST_NAME}"
@@ -313,6 +312,8 @@ EOF
       "${SBATCH_COMMON[@]}" \
       --wrap="${RUN_WRAP}"
     RUN_JOB_IDS+=("<${RESOLVED_TEST_NAME}_array_job_id>")
+    RUN_TEST_NAMES+=("${RESOLVED_TEST_NAME}")
+    RUN_JOB_IDS_BY_TEST+=("<${RESOLVED_TEST_NAME}_array_job_id>")
   else
     RUN_JOB_ID=$(run_sbatch \
       --parsable \
@@ -325,6 +326,8 @@ EOF
       --wrap="${RUN_WRAP}")
 
     RUN_JOB_IDS+=("${RUN_JOB_ID}")
+    RUN_TEST_NAMES+=("${RESOLVED_TEST_NAME}")
+    RUN_JOB_IDS_BY_TEST+=("${RUN_JOB_ID}")
     echo "Submitted array job for ${RESOLVED_TEST_NAME}: ${RUN_JOB_ID}"
   fi
 done
@@ -333,9 +336,27 @@ if is_truthy "${SUBMIT_AGGREGATE}"; then
   AGG_CPUS="${SLURM_AGG_CPUS:-1}"
   AGG_MEM="${SLURM_AGG_MEM:-${DEFAULT_MEM:-8GB}}"
   AGG_TIME="${SLURM_AGG_TIME:-${DEFAULT_TIME:-04:00:00}}"
-  AGG_DEPENDENCY="$(IFS=:; echo "${RUN_JOB_IDS[*]}")"
 
-  AGG_WRAP=$(cat <<EOF
+  if [[ "${TEST_NAME}" == "all" ]]; then
+    AGGREGATE_TEST_NAMES=("${RESOLVED_TEST_NAMES[@]}")
+  else
+    AGGREGATE_TEST_NAMES=("${TEST_NAME}")
+  fi
+
+  for AGGREGATE_TEST_NAME in "${AGGREGATE_TEST_NAMES[@]}"; do
+    if [[ "${TEST_NAME}" == "all" ]]; then
+      AGG_DEPENDENCY="$(run_job_id_for_test "${AGGREGATE_TEST_NAME}")"
+      AGG_TEST_SLUG="${TEST_SUITE}_${AGGREGATE_TEST_NAME}"
+      AGG_TEST_SLUG="${AGG_TEST_SLUG//[^A-Za-z0-9_]/_}"
+      AGG_TEST_SLUG="${AGG_TEST_SLUG:0:48}"
+      AGG_JOB_NAME="tb_agg_${AGG_TEST_SLUG}"
+      AGG_LOG_DIR="${PATH_LOGS}/slurm/${TEST_SUITE}/${AGGREGATE_TEST_NAME}"
+      mkdir -p "${AGG_LOG_DIR}"
+    else
+      AGG_DEPENDENCY="$(IFS=:; echo "${RUN_JOB_IDS[*]}")"
+    fi
+
+    AGG_WRAP=$(cat <<EOF
 set -euo pipefail
 
 cd '${PATH_REPO}'
@@ -350,37 +371,38 @@ export OPENBLAS_NUM_THREADS="1"
 export VECLIB_MAXIMUM_THREADS="1"
 
 echo '========================================'
-echo 'Aggregating results for ${TEST_SUITE}/${TEST_NAME}'
+echo 'Aggregating results for ${TEST_SUITE}/${AGGREGATE_TEST_NAME}'
 echo 'Started at:' \$(date)
-Rscript 'tests/${TEST_SUITE}/aggregate_results.R' '${TEST_NAME}'
+Rscript 'tests/${TEST_SUITE}/aggregate_results.R' '${AGGREGATE_TEST_NAME}'
 echo 'Finished at:' \$(date)
 echo '========================================'
 EOF
 )
 
-  if is_truthy "${DRY_RUN}"; then
-    run_sbatch \
-      --parsable \
-      --job-name="${AGG_JOB_NAME}" \
-      --output="${AGG_LOG_DIR}/${AGG_JOB_NAME}_%j.out" \
-      --error="${AGG_LOG_DIR}/${AGG_JOB_NAME}_%j.err" \
-      --time="${AGG_TIME}" \
-      --mem="${AGG_MEM}" \
-      --cpus-per-task="${AGG_CPUS}" \
-      --dependency="afterok:${AGG_DEPENDENCY}" \
-      --wrap="${AGG_WRAP}"
-  else
-    AGG_JOB_ID=$(run_sbatch \
-      --parsable \
-      --job-name="${AGG_JOB_NAME}" \
-      --output="${AGG_LOG_DIR}/${AGG_JOB_NAME}_%j.out" \
-      --error="${AGG_LOG_DIR}/${AGG_JOB_NAME}_%j.err" \
-      --time="${AGG_TIME}" \
-      --mem="${AGG_MEM}" \
-      --cpus-per-task="${AGG_CPUS}" \
-      --dependency="afterok:${AGG_DEPENDENCY}" \
-      --wrap="${AGG_WRAP}")
+    if is_truthy "${DRY_RUN}"; then
+      run_sbatch \
+        --parsable \
+        --job-name="${AGG_JOB_NAME}" \
+        --output="${AGG_LOG_DIR}/${AGG_JOB_NAME}_%j.out" \
+        --error="${AGG_LOG_DIR}/${AGG_JOB_NAME}_%j.err" \
+        --time="${AGG_TIME}" \
+        --mem="${AGG_MEM}" \
+        --cpus-per-task="${AGG_CPUS}" \
+        --dependency="afterok:${AGG_DEPENDENCY}" \
+        --wrap="${AGG_WRAP}"
+    else
+      AGG_JOB_ID=$(run_sbatch \
+        --parsable \
+        --job-name="${AGG_JOB_NAME}" \
+        --output="${AGG_LOG_DIR}/${AGG_JOB_NAME}_%j.out" \
+        --error="${AGG_LOG_DIR}/${AGG_JOB_NAME}_%j.err" \
+        --time="${AGG_TIME}" \
+        --mem="${AGG_MEM}" \
+        --cpus-per-task="${AGG_CPUS}" \
+        --dependency="afterok:${AGG_DEPENDENCY}" \
+        --wrap="${AGG_WRAP}")
 
-    echo "Submitted aggregate job: ${AGG_JOB_ID}"
-  fi
+      echo "Submitted aggregate job for ${AGGREGATE_TEST_NAME}: ${AGG_JOB_ID}"
+    fi
+  done
 fi

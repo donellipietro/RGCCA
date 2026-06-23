@@ -59,7 +59,7 @@ TESTBENCH_CONFIG_PROFILES <- list(
     list(
       PATH_REPO = PATH_REPO,
 
-      # Generated folders. Defaults keep heavy outputs off the home profile.
+      # Generated folders. Defaults keep large outputs off the home profile.
       PATH_RESULTS = file.path(PATH_OUTPUT, "results"),
       PATH_IMAGES = file.path(PATH_OUTPUT, "images"),
       PATH_TEST_DATA = file.path(PATH_OUTPUT, "data/tests"),
@@ -89,12 +89,9 @@ TESTBENCH_CONFIG_PROFILES <- list(
       DEFAULT_CPUS = 1,
       DEFAULT_MEM = "16GB",
       DEFAULT_TIME = "12:00:00",
-      HEAVY_CPUS = 20,
-      HEAVY_MEM = "32GB",
-      HEAVY_TIME = "72:00:00",
       MULTITHREAD_CPUS = 20,
       MULTITHREAD_MEM = "32GB",
-      MULTITHREAD_TIME = "72:00:00",
+      MULTITHREAD_TIME = "12:00:00",
       R_CRAN_REPO = "https://cloud.r-project.org",
       R_LIBS_USER = "/home/preclineu/piedon/R/x86_64-pc-linux-gnu-library/4.3",
       R_LIBS_SITE = "/opt/R-packages/4.3.3:/opt/R/4.3.3/lib64/R/library"

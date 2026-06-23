@@ -63,6 +63,7 @@ Slurm job-array run:
 
 ```bash
 make run_test_slurm TEST_SUITE=RGCCA-2D TEST_NAME=testResampling
+make run_test_slurm TEST_SUITE=RGCCA-2D TEST_NAME=all
 ```
 
 Outputs are written under the configured `results`, `images`, `data/tests`, and
@@ -184,10 +185,12 @@ removes generated results, images, test data, compiled files, and `.env`.
 threading mode, and submits array jobs. Important overrides include:
 
 ```bash
-SLURM_RESOURCES=heavy
 SLURM_ARRAY_LIMIT=20
 SLURM_DRY_RUN=1
 SLURM_COMPILE=1
+SLURM_CPUS=1
+SLURM_MEM=16GB
+SLURM_TIME=12:00:00
 SLURM_MULTI_CPUS=20
 SLURM_MULTI_MEM=32GB
 SLURM_MULTI_TIME=72:00:00
