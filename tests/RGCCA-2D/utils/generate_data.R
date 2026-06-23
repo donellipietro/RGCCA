@@ -53,14 +53,6 @@ generate_data <- function(test_options, seed = 0) {
     sin(2 * pi * f_hz * t)
   }
 
-  ## Define the default C matrix ----
-  C <- matrix(c(
-    0,1,1,1,
-    1,0,0,1,
-    1,0,0,1,
-    1,1,1,0
-  ), ncol = 4, byrow = TRUE)
-
   ## Locs resolution -----
   T_sec <- test_options$domain_and_locations$T_sec
 
@@ -79,6 +71,10 @@ generate_data <- function(test_options, seed = 0) {
   n_locs_D           <- test_options$dimensions$n_locs_D
   n_nodes_T          <- test_options$dimensions$n_nodes_T
   n_nodes_HR_grid_T  <- test_options$dimensions$n_nodes_HR_grid_T
+
+  ## Define the default fully connected C matrix ----
+  C <- matrix(1, n_groups, n_groups)
+  diag(C) <- 0
 
   # which spatial region each group uses
   region_names <- test_options$domain_and_locations$name_mesh
@@ -186,6 +182,25 @@ generate_data <- function(test_options, seed = 0) {
 
   }
 
+  active_blocks <- vector("list", n_comp)
+  active_connections <- vector("list", n_comp)
+  for (h in seq_len(n_comp)) {
+    active_blocks[[h]] <- vapply(
+      seq_len(n_groups),
+      function(g) {
+        norm_l2(A_locs[[g]][, h]) > 1e-8 && RMSE(E_locs[[g]][, h]) > 1e-8
+      },
+      logical(1)
+    )
+    score_cor <- suppressWarnings(cor(do.call(
+      cbind,
+      lapply(seq_len(n_groups), function(g) E_locs[[g]][, h])
+    )))
+    score_cor[is.na(score_cor)] <- 0
+    active_connections[[h]] <- (abs(score_cor) > 1e-8) + 0
+    diag(active_connections[[h]]) <- 0
+  }
+
   ## ----- add zero-mean noise (per group, per spatial size) -----
   sigma_noise <- test_options$noise$sigma_noise
   set.seed(seed)
@@ -229,6 +244,10 @@ generate_data <- function(test_options, seed = 0) {
     E_locs = E_locs,
     A_grid = A_grid,
     E_grid = E_grid,
+    model_selection_truth = list(
+      active_blocks = active_blocks,
+      active_connections = active_connections
+    ),
     sigma_noise = sigma_noise,
     TR = TR,
     T_sec = T_sec,

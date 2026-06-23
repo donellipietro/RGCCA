@@ -902,17 +902,188 @@ load_cpp_bootstrap_selection <- function(path_results, n_comp, n_groups, grid_D 
 
 #' Create a normalized RGCCA model-options list from named arguments.
 #'
-#' @param ... Named options or values passed through to the helper.
+#' Arguments are explicit so IDEs can suggest available RGCCA options while
+#' editing test fixtures and option generators. Runtime-only fields used by
+#' wrappers can still be supplied through `...`.
+#'
+#' @param n_comp Number of components.
+#' @param C RGCCA connection matrix or token.
+#' @param max_iter Maximum number of solver iterations.
+#' @param tol Solver tolerance.
+#' @param verbose Whether solvers should print progress.
+#' @param cache_covariances Whether C++ drivers should cache covariances.
+#' @param bias Whether covariance estimates are biased.
+#' @param init Optional initialization token passed to C++ drivers.
+#' @param init_strategy Initialization strategy.
+#' @param lambda_selection_weights Whether bootstrap weight selection is enabled.
+#' @param lambda_selection_components Component-selection strategy.
+#' @param lambda_components Optional component regularization token or values.
+#' @param block_deactivation Whether bootstrap block deactivation is enabled.
+#' @param connection_deactivation Whether bootstrap connection deactivation is enabled.
+#' @param component_significance Whether component significance is estimated.
+#' @param mode RGCCA mode token.
+#' @param weight_sign_constraint Weight sign constraint token.
+#' @param deflation Optional deflation token passed to C++ drivers.
+#' @param deflation_mode Deflation mode.
+#' @param scheme RGCCA scheme.
+#' @param solver Optional solver name stored in fitted-model metadata.
+#' @param n_obs Optional observation count stored in fitted-model metadata.
+#' @param lambda Optional lambda value stored in fitted-model metadata.
+#' @param tau Optional tau value stored in fitted-model metadata.
+#' @param non_negative_weights Optional non-negative-weight flag.
+#' @param lambda_grid Optional lambda grid stored in fitted-model metadata.
+#' @param include_defaults Whether missing options should be filled from defaults.
+#' @param ... Additional named model options for compatibility.
 #' @return The value produced by `rgcca_model_options`.
-rgcca_model_options <- function(...) {
-  resolve_rgcca_model_options(list(...))
+rgcca_model_options <- function(n_comp = 3,
+                                C = "data",
+                                max_iter = 1000,
+                                tol = 1e-8,
+                                verbose = FALSE,
+                                cache_covariances = TRUE,
+                                bias = TRUE,
+                                init = NULL,
+                                init_strategy = "svd",
+                                lambda_selection_weights = FALSE,
+                                lambda_selection_components = "Automatic",
+                                lambda_components = NULL,
+                                block_deactivation = FALSE,
+                                connection_deactivation = FALSE,
+                                component_significance = FALSE,
+                                mode = "Default",
+                                weight_sign_constraint = "Default",
+                                deflation = NULL,
+                                deflation_mode = "Scores",
+                                scheme = "Factorial",
+                                solver = NULL,
+                                n_obs = NULL,
+                                lambda = NULL,
+                                tau = NULL,
+                                non_negative_weights = NULL,
+                                lambda_grid = NULL,
+                                include_defaults = TRUE,
+                                ...) {
+  supplied_options <- setdiff(
+    names(as.list(match.call(expand.dots = FALSE)))[-1],
+    c("include_defaults", "...")
+  )
+  model_options <- list(
+    n_comp = n_comp,
+    C = C,
+    max_iter = max_iter,
+    tol = tol,
+    verbose = verbose,
+    cache_covariances = cache_covariances,
+    bias = bias,
+    init_strategy = init_strategy,
+    lambda_selection_weights = lambda_selection_weights,
+    lambda_selection_components = lambda_selection_components,
+    block_deactivation = block_deactivation,
+    connection_deactivation = connection_deactivation,
+    component_significance = component_significance,
+    mode = mode,
+    weight_sign_constraint = weight_sign_constraint,
+    deflation_mode = deflation_mode,
+    scheme = scheme
+  )
+  optional_options <- list(
+    init = init,
+    lambda_components = lambda_components,
+    deflation = deflation,
+    solver = solver,
+    n_obs = n_obs,
+    lambda = lambda,
+    tau = tau,
+    non_negative_weights = non_negative_weights,
+    lambda_grid = lambda_grid
+  )
+  all_options <- modifyList(model_options, optional_options, keep.null = FALSE)
+  if (!isTRUE(include_defaults)) {
+    model_options <- all_options[intersect(supplied_options, names(all_options))]
+    model_options <- modifyList(model_options, list(...), keep.null = FALSE)
+    return(model_options)
+  }
+  model_options <- all_options
+  model_options <- modifyList(model_options, list(...), keep.null = FALSE)
+  resolve_rgcca_model_options(model_options)
 }
 
 
 #' Create a normalized RGCCA bootstrap-options list from named arguments.
 #'
-#' @param ... Named options or values passed through to the helper.
+#' Arguments are explicit so IDEs can suggest available bootstrap options while
+#' editing test fixtures and option generators.
+#'
+#' @param B_max Maximum number of bootstrap resamples.
+#' @param B_min Minimum number of bootstrap resamples.
+#' @param resampling_strategy Bootstrap resampling strategy.
+#' @param stationary_block_length Stationary-resampling block length.
+#' @param seed Bootstrap random seed.
+#' @param max_threads Maximum number of bootstrap worker threads.
+#' @param B_per_thread_per_batch Resamples per worker per batch.
+#' @param adaptive Whether adaptive bootstrap stopping is enabled.
+#' @param adaptive_tol Adaptive stopping tolerance.
+#' @param stable_batches_required Number of stable batches required before stopping.
+#' @param active_block_tol Active-block tolerance.
+#' @param active_connection_sign_stability Sign-stability threshold for active connections.
+#' @param active_connection_min_abs_corr Minimum absolute correlation for active connections.
+#' @param ci_level Confidence interval level.
+#' @param patience Adaptive-stopping patience.
+#' @param component_significance_resamples Component-significance resample count.
+#' @param component_significance_alpha Component-significance alpha.
+#' @param save_bootstrap_resamples Whether bootstrap resamples are saved.
+#' @param include_defaults Whether missing options should be filled from defaults.
+#' @param ... Additional named bootstrap options for compatibility.
 #' @return The value produced by `rgcca_bootstrap_options`.
-rgcca_bootstrap_options <- function(...) {
-  resolve_rgcca_bootstrap_options(list(...))
+rgcca_bootstrap_options <- function(B_max = 5000,
+                                    B_min = 60,
+                                    resampling_strategy = "Ordinary",
+                                    stationary_block_length = 0,
+                                    seed = 12345,
+                                    max_threads = 12,
+                                    B_per_thread_per_batch = 5,
+                                    adaptive = TRUE,
+                                    adaptive_tol = 1e-3,
+                                    stable_batches_required = 3,
+                                    active_block_tol = 1e-8,
+                                    active_connection_sign_stability = 0.95,
+                                    active_connection_min_abs_corr = 0.05,
+                                    ci_level = 0.95,
+                                    patience = 1,
+                                    component_significance_resamples = 100,
+                                    component_significance_alpha = 0.05,
+                                    save_bootstrap_resamples = FALSE,
+                                    include_defaults = TRUE,
+                                    ...) {
+  supplied_options <- setdiff(
+    names(as.list(match.call(expand.dots = FALSE)))[-1],
+    c("include_defaults", "...")
+  )
+  bootstrap_options <- list(
+    B_max = B_max,
+    B_min = B_min,
+    resampling_strategy = resampling_strategy,
+    stationary_block_length = stationary_block_length,
+    seed = seed,
+    max_threads = max_threads,
+    B_per_thread_per_batch = B_per_thread_per_batch,
+    adaptive = adaptive,
+    adaptive_tol = adaptive_tol,
+    stable_batches_required = stable_batches_required,
+    active_block_tol = active_block_tol,
+    active_connection_sign_stability = active_connection_sign_stability,
+    active_connection_min_abs_corr = active_connection_min_abs_corr,
+    ci_level = ci_level,
+    patience = patience,
+    component_significance_resamples = component_significance_resamples,
+    component_significance_alpha = component_significance_alpha,
+    save_bootstrap_resamples = save_bootstrap_resamples
+  )
+  if (!isTRUE(include_defaults)) {
+    bootstrap_options <- bootstrap_options[intersect(supplied_options, names(bootstrap_options))]
+    bootstrap_options <- modifyList(bootstrap_options, list(...), keep.null = FALSE)
+    return(bootstrap_options)
+  }
+  bootstrap_options <- modifyList(bootstrap_options, list(...), keep.null = FALSE)
+  resolve_rgcca_bootstrap_options(bootstrap_options)
 }

@@ -121,6 +121,34 @@ if (is.null(order) || length(order) != length(loaded_results$varying_options)) {
   order <- 1:length(loaded_results$varying_options) # default
 }
 
+finite_values <- function(data_plot) {
+  if (is.null(data_plot)) {
+    return(numeric(0))
+  }
+  values <- suppressWarnings(as.numeric(unlist(data_plot[loaded_results$model_names])))
+  values[is.finite(values)]
+}
+
+metric_limits <- function(data_plot, lower = 0) {
+  values <- finite_values(data_plot)
+  if (length(values) == 0) {
+    return(NULL)
+  }
+  c(lower, max(values, na.rm = TRUE))
+}
+
+plot_metric <- function(data_plot, title_prefix, values_name, limits = NULL,
+                        plots_catalog = NULL) {
+  if (length(finite_values(data_plot)) == 0) {
+    return(invisible(FALSE))
+  }
+  plot.aggregated_data(
+    loaded_results, data_plot, title_prefix, values_name,
+    order = order, limits = limits, plots_catalog = plots_catalog
+  )
+  invisible(TRUE)
+}
+
 ### Time complexity ----
 
 ## Set plots parameters
@@ -157,7 +185,7 @@ data_plot <- loaded_results$objective
 data_plot[, -c(1, 2, 3)] <- log10(data_plot[, -c(1, 2, 3)] + 0.1)
 title_prefix <- paste0("log10(Objective) w.r.t")
 values_name <- "log10(Obj)"
-limits <- range(data_plot[loaded_results$model_names])
+limits <- range(data_plot[loaded_results$model_names], na.rm = TRUE)
 
 ## Plot aggregated results
 plot.aggregated_data(
@@ -165,6 +193,83 @@ plot.aggregated_data(
   order = order, limits = limits
 )
 dev.off()
+
+### Diagnostics ----
+
+if (!is.null(loaded_results$diagnostics)) {
+  pdf(paste0(path_list$images, "diagnostics.pdf"), width = width, height = height)
+
+  diagnostic_plots <- list(
+    iterations = list(
+      title = "Iterations w.r.t",
+      values = "Iterations"
+    ),
+    bootstrap_resamples = list(
+      title = "Effective bootstrap resamples w.r.t",
+      values = "Resamples"
+    )
+  )
+
+  for (metric_name in names(diagnostic_plots)) {
+    data_plot <- loaded_results$diagnostics[[metric_name]]
+    plot_metric(
+      data_plot,
+      diagnostic_plots[[metric_name]]$title,
+      diagnostic_plots[[metric_name]]$values,
+      metric_limits(data_plot)
+    )
+  }
+
+  dev.off()
+}
+
+### Model selection ----
+
+if (!is.null(loaded_results$model_selection)) {
+  pdf(paste0(path_list$images, "model_selection.pdf"), width = width, height = height)
+
+  plots_catalog_logy <- list(
+    boxplots = TRUE,
+    lines = FALSE,
+    logx = FALSE,
+    logy = FALSE,
+    loglog = FALSE,
+    normalized = FALSE,
+    boxplot_logy = TRUE
+  )
+
+  data_plot <- loaded_results$model_selection$lambda_weights
+  data_plot[loaded_results$model_names] <- lapply(
+    data_plot[loaded_results$model_names],
+    function(x) ifelse(is.na(x) | x <= 0, NaN, x)
+  )
+  if (any(is.finite(as.matrix(data_plot[loaded_results$model_names])))) {
+    title_prefix <- "Optimal lambda w.r.t"
+    values_name <- "Lambda"
+    plot.aggregated_data(
+      loaded_results, data_plot, title_prefix, values_name,
+      order = order, limits = NULL, plots_catalog = plots_catalog_logy
+    )
+  }
+
+  model_selection_plots <- list(
+    active_blocks_accuracy = "Active-block accuracy",
+    active_connections_accuracy = "Active-connection accuracy"
+  )
+
+  for (metric_name in names(model_selection_plots)) {
+    data_plot <- loaded_results$model_selection[[metric_name]]
+    title_prefix <- paste0(model_selection_plots[[metric_name]], " w.r.t")
+    values_name <- model_selection_plots[[metric_name]]
+    limits <- if (grepl("accuracy", metric_name)) c(0, 1) else NULL
+    plot.aggregated_data(
+      loaded_results, data_plot, title_prefix, values_name,
+      order = order, limits = limits
+    )
+  }
+
+  dev.off()
+}
 
 
 ### RMSE ----
@@ -192,11 +297,35 @@ for (g in 1:n_groups) {
   ## Open a pdf where to save the plots
   pdf(paste0(path_list$images, "rmse_g", g, ".pdf"), width = width, height = height)
 
+  #### Cumulative RMSE[A] at locations ----
+  data_plot <- loaded_results$rmse[[paste0("A", g, "_locs_all")]]
+  title_prefix <- paste0("Cumulative RMSE[A", g, "] at locations w.r.t")
+  values_name <- "RMSE"
+  limits <- c(0, max(data_plot[loaded_results$model_names], na.rm = TRUE))
+
+  ## Plot aggregated results
+  plot.aggregated_data(
+    loaded_results, data_plot, title_prefix, values_name,
+    order = order, limits = limits
+  )
+
   #### RMSE[A] at locations ----
   data_plot <- loaded_results$rmse[[paste0("A", g, "_locs")]]
   title_prefix <- paste0("RMSE[A", g, "] at locations w.r.t")
   values_name <- "RMSE"
-  limits <- c(0, max(data_plot[loaded_results$model_names]))
+  limits <- c(0, max(data_plot[loaded_results$model_names], na.rm = TRUE))
+
+  ## Plot aggregated results
+  plot.aggregated_data(
+    loaded_results, data_plot, title_prefix, values_name,
+    order = order, limits = limits
+  )
+
+  #### Cumulative RMSE[A_star] at locations ----
+  data_plot <- loaded_results$rmse[[paste0("A_star", g, "_locs_all")]]
+  title_prefix <- paste0("Cumulative RMSE[A_star", g, "] at locations w.r.t")
+  values_name <- "RMSE"
+  limits <- c(0, max(data_plot[loaded_results$model_names], na.rm = TRUE))
 
   ## Plot aggregated results
   plot.aggregated_data(
@@ -208,7 +337,19 @@ for (g in 1:n_groups) {
   data_plot <- loaded_results$rmse[[paste0("A_star", g, "_locs")]]
   title_prefix <- paste0("RMSE[A_star", g, "] at locations w.r.t")
   values_name <- "RMSE"
-  limits <- c(0, max(data_plot[loaded_results$model_names]))
+  limits <- c(0, max(data_plot[loaded_results$model_names], na.rm = TRUE))
+
+  ## Plot aggregated results
+  plot.aggregated_data(
+    loaded_results, data_plot, title_prefix, values_name,
+    order = order, limits = limits
+  )
+
+  #### Cumulative RMSE[H] ----
+  data_plot <- loaded_results$rmse[[paste0("H", g, "_all")]]
+  title_prefix <- paste0("Cumulative RMSE[H", g, "] w.r.t")
+  values_name <- "RMSE"
+  limits <- c(0, max(data_plot[loaded_results$model_names], na.rm = TRUE))
 
   ## Plot aggregated results
   plot.aggregated_data(
@@ -220,7 +361,7 @@ for (g in 1:n_groups) {
   data_plot <- loaded_results$rmse[[paste0("H", g)]]
   title_prefix <- paste0("RMSE[H", g, "] w.r.t")
   values_name <- "RMSE"
-  limits <- c(0, max(data_plot[loaded_results$model_names]))
+  limits <- c(0, max(data_plot[loaded_results$model_names], na.rm = TRUE))
 
   ## Plot aggregated results
   plot.aggregated_data(

@@ -265,6 +265,7 @@ source '${PROJECT_DIR}/.env'
 set +a
 
 export TESTBENCH_PROFILE='${PROFILE}'
+export SMOKE_TEST='${SMOKE_TEST:-0}'
 export OMP_NUM_THREADS="1"
 export OPENBLAS_NUM_THREADS="1"
 export VECLIB_MAXIMUM_THREADS="1"
@@ -343,6 +344,7 @@ source '${PROJECT_DIR}/.env'
 set +a
 
 export TESTBENCH_PROFILE='${PROFILE}'
+export SMOKE_TEST='${SMOKE_TEST:-0}'
 export OMP_NUM_THREADS="1"
 export OPENBLAS_NUM_THREADS="1"
 export VECLIB_MAXIMUM_THREADS="1"

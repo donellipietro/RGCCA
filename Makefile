@@ -10,6 +10,7 @@ SLURM_ARRAY_LIMIT ?=
 SLURM_COMPILE ?= 0
 SLURM_AGGREGATE ?= 1
 SLURM_DRY_RUN ?= 0
+SMOKE_TEST ?= 0
 SLURM_CPUS ?=
 SLURM_MEM ?=
 SLURM_TIME ?=
@@ -219,7 +220,7 @@ run_test: ensure_env
 		exit 0; \
 	else \
 		echo "Running: $(TEST_NAME) from suite $(TEST_SUITE)"; \
-		./tests/run_tests.sh "$(TEST_SUITE)" "$(TEST_NAME)"; \
+		SMOKE_TEST="$(SMOKE_TEST)" ./tests/run_tests.sh "$(TEST_SUITE)" "$(TEST_NAME)"; \
 	fi
 	
 ## Run all the batches of a test in parallel
@@ -235,7 +236,7 @@ run_test_parallel: ensure_env
 		exit 0; \
 	else \
 		echo "Running: $(TEST_NAME) from suite $(TEST_SUITE)"; \
-		./tests/run_tests_parallel.sh "$(TEST_SUITE)" "$(TEST_NAME)"; \
+		SMOKE_TEST="$(SMOKE_TEST)" ./tests/run_tests_parallel.sh "$(TEST_SUITE)" "$(TEST_NAME)"; \
 	fi
 
 ## Submit all batches of a test to Slurm as a job array
@@ -273,6 +274,7 @@ run_test_slurm:
 		SLURM_COMPILE_TIME="$(SLURM_COMPILE_TIME)" \
 		SLURM_COMPILE_MODEL="$(SLURM_COMPILE_MODEL)" \
 		SLURM_COMPILE_TARGET="$(SLURM_COMPILE_TARGET)" \
+		SMOKE_TEST="$(SMOKE_TEST)" \
 		./tests/run_tests_slurm.sh "$(TEST_SUITE)" "$(TEST_NAME)"; \
 	fi
 
@@ -293,7 +295,7 @@ inspect_results: ensure_env
 		set -e; \
 		set -a; source .env; set +a; \
 		queue_directory="$${PATH_QUEUE}/$(TEST_SUITE)/$(TEST_NAME)"; \
-		$(RSCRIPT) src/init.R "$(TEST_SUITE)" "$(TEST_NAME)"; \
+		SMOKE_TEST="$(SMOKE_TEST)" $(RSCRIPT) src/init.R "$(TEST_SUITE)" "$(TEST_NAME)"; \
 		echo "Available files in $$queue_directory:"; \
 		files=($$(ls -1 "$$queue_directory" 2>/dev/null)); \
 		if [ $${#files[@]} -eq 0 ]; then \

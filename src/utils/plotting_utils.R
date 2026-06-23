@@ -584,12 +584,13 @@ plot.field_tile <- function(nodes, f, boundary = NULL,
 #' @param limits Optional plotting limits.
 #' @param DIVIDERS Whether to draw group dividers.
 #' @param LEGEND Whether to show a legend.
+#' @param LOGY Whether to use a log10 y-axis.
 #' @return The value produced by `plot.grouped_boxplots`.
 plot.grouped_boxplots <- function(data,
                                   group_name = "Components", group_labels = NULL,
                                   subgroup_name = "Models", subgroup_labels = NULL, subgroup_colors = NULL,
                                   values_name = "Score", limits = NULL,
-                                  DIVIDERS = TRUE, LEGEND = TRUE) {
+                                  DIVIDERS = TRUE, LEGEND = TRUE, LOGY = FALSE) {
 
   ## Data integrity check
   if (!("Group" %in% names(data))) stop("The dataframe must contain a column named 'Group'")
@@ -620,8 +621,10 @@ plot.grouped_boxplots <- function(data,
     scale_fill_manual(name = subgroup_name, values = subgroup_colors) +
     scale_color_manual(name = subgroup_name, values = subgroup_colors)
 
-  ## Add limits
-  if (!is.null(limits)) {
+  ## Add y-axis scaling
+  if (isTRUE(LOGY)) {
+    plot <- plot + scale_y_log10(limits = limits)
+  } else if (!is.null(limits)) {
     plot <- plot + scale_y_continuous(limits = limits)
   }
 
@@ -928,6 +931,7 @@ plot.aggregated_data <- function(loaded_results, data_plot_orig, title_prefix, v
     boxplot_list <- list()
     plot_list <- list()
     plot_logx_list <- list()
+    plot_logy_list <- list()
     plot_loglog_list <- list()
     plot_loglog_normalized_list <- list()
 
@@ -972,17 +976,40 @@ plot.aggregated_data <- function(loaded_results, data_plot_orig, title_prefix, v
       ## Skip if data is empty
       if (nrow(data_plot_trimmed) == 0) next
 
-      ## Remove models with all-NaN results
-      valid_models <- model_names[!apply(data_plot_trimmed[, model_names], 2, function(x) all(is.nan(x)))]
+      ## Remove models without numeric results in this panel.
+      has_finite_result <- function(x) {
+        any(is.finite(suppressWarnings(as.numeric(x))))
+      }
+      valid_models <- model_names[apply(
+        data_plot_trimmed[, model_names, drop = FALSE],
+        2,
+        has_finite_result
+      )]
       if (length(valid_models) == 0) next
 
       ## Aggregate repeated batches before drawing line-based summaries.
-      data_plot_aggregated <- aggregate(
-        . ~ Group,
-        data = data_plot_trimmed[, c("Group", valid_models)],
-        FUN = median,
-        na.rm = TRUE
+      valid_rows <- !is.na(data_plot_trimmed$Group) & apply(
+        data_plot_trimmed[, valid_models, drop = FALSE],
+        1,
+        has_finite_result
       )
+      if (!any(valid_rows)) next
+
+      data_plot_trimmed <- data_plot_trimmed[valid_rows, c("Group", valid_models), drop = FALSE]
+      data_plot_aggregated <- data.frame(
+        Group = sort(unique(data_plot_trimmed$Group))
+      )
+      for (name_model in valid_models) {
+        medians <- tapply(
+          data_plot_trimmed[[name_model]],
+          data_plot_trimmed$Group,
+          median,
+          na.rm = TRUE
+        )
+        data_plot_aggregated[[name_model]] <- as.numeric(
+          medians[as.character(data_plot_aggregated$Group)]
+        )
+      }
 
       ## Boxplots
       if (isTRUE(plots_catalog$boxplots)) {
@@ -994,7 +1021,8 @@ plot.aggregated_data <- function(loaded_results, data_plot_orig, title_prefix, v
           subgroup_labels = model_labels[match(valid_models, model_names)],
           subgroup_colors = model_colors[match(valid_models, model_names)],
           limits = limits,
-          LEGEND = FALSE
+          LEGEND = FALSE,
+          LOGY = isTRUE(plots_catalog$boxplot_logy)
         ) + std_plot_settings()
       }
 
@@ -1029,6 +1057,23 @@ plot.aggregated_data <- function(loaded_results, data_plot_orig, title_prefix, v
           limits = limits,
           NORMALIZED = FALSE,
           LOGX = TRUE
+        ) + std_plot_settings()
+      }
+
+      ## Lines (log-y)
+      if (isTRUE(plots_catalog$logy)) {
+        plot_logy_list[[j]] <- plot.multiple_lines(
+          data_plot_aggregated[, c("Group", valid_models)],
+          values_name = values_name,
+          x_name = group_name,
+          x_breaks = TRUE,
+          subgroup_name = "Approaches",
+          subgroup_labels = model_labels[match(valid_models, model_names)],
+          subgroup_colors = model_colors[match(valid_models, model_names)],
+          LEGEND = FALSE,
+          limits = limits,
+          NORMALIZED = FALSE,
+          LOGY = TRUE
         ) + std_plot_settings()
       }
 
@@ -1070,31 +1115,37 @@ plot.aggregated_data <- function(loaded_results, data_plot_orig, title_prefix, v
     ## Handle layout safely if 1D: use 1 column
     ncols <- if (length(labels_cols) == 0) 1 else length(labels_cols)
 
-    if (isTRUE(plots_catalog$boxplots)) {
+    if (isTRUE(plots_catalog$boxplots) && length(boxplot_list) > 0) {
       boxplot <- arrangeGrob(grobs = boxplot_list, ncol = ncols, as.table = FALSE)
       boxplot <- labeled_plots_grid(boxplot, title, labels_cols, labels_rows, 9, 7)
       grid.arrange(boxplot)
     }
 
-    if (isTRUE(plots_catalog$lines)) {
+    if (isTRUE(plots_catalog$lines) && length(plot_list) > 0) {
       plot <- arrangeGrob(grobs = plot_list, ncol = ncols, as.table = FALSE)
       plot <- labeled_plots_grid(plot, title, labels_cols, labels_rows, 9, 7)
       grid.arrange(plot)
     }
 
-    if (isTRUE(plots_catalog$logx)) {
+    if (isTRUE(plots_catalog$logx) && length(plot_logx_list) > 0) {
       plot_logx <- arrangeGrob(grobs = plot_logx_list, ncol = ncols, as.table = FALSE)
       plot_logx <- labeled_plots_grid(plot_logx, title, labels_cols, labels_rows, 9, 7)
       grid.arrange(plot_logx)
     }
 
-    if (isTRUE(plots_catalog$loglog)) {
+    if (isTRUE(plots_catalog$logy) && length(plot_logy_list) > 0) {
+      plot_logy <- arrangeGrob(grobs = plot_logy_list, ncol = ncols, as.table = FALSE)
+      plot_logy <- labeled_plots_grid(plot_logy, title, labels_cols, labels_rows, 9, 7)
+      grid.arrange(plot_logy)
+    }
+
+    if (isTRUE(plots_catalog$loglog) && length(plot_loglog_list) > 0) {
       plot_loglog <- arrangeGrob(grobs = plot_loglog_list, ncol = ncols, as.table = FALSE)
       plot_loglog <- labeled_plots_grid(plot_loglog, title, labels_cols, labels_rows, 9, 7)
       grid.arrange(plot_loglog)
     }
 
-    if (isTRUE(plots_catalog$normalized)) {
+    if (isTRUE(plots_catalog$normalized) && length(plot_loglog_normalized_list) > 0) {
       plot_loglog_normalized <- arrangeGrob(grobs = plot_loglog_normalized_list, ncol = ncols, as.table = FALSE)
       plot_loglog_normalized <- labeled_plots_grid(plot_loglog_normalized, title, labels_cols, labels_rows, 9, 7)
       grid.arrange(plot_loglog_normalized)

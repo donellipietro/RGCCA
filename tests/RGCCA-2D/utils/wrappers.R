@@ -8,7 +8,8 @@
 
 
 if (!exists("collect_cpp_model_options") ||
-    !exists("effective_rgcca_model_options")) {
+    !exists("effective_rgcca_model_options") ||
+    !exists("rgcca_model_options")) {
   source("src/utils/rgcca_options.R")
 }
 #' Dispatch one model name to the matching R or C++ fitting wrapper.
@@ -72,14 +73,15 @@ R_RGCCA <- function(model_name, data, test_options) {
 
   model <- new_rgcca_model(
     test_options,
-    model_options = list(
+    model_options = rgcca_model_options(
       solver = model_name,
       n_obs = nrow(blocks[[1]]),
       n_comp = n_comp,
       lambda = 0,
       tau = tau,
       non_negative_weights = FALSE,
-      lambda_selection_weights = FALSE
+      lambda_selection_weights = FALSE,
+      include_defaults = FALSE
     ),
     C = C
   )
@@ -250,8 +252,12 @@ CPP_RGCCA <- function(model_name, data, test_options, path_list) {
   path_batch <- path_list$batch
   path_tmp_data <- path_list$tmp_data
   path_tmp_results <- path_list$tmp_results
+  if (is.null(path_tmp_data) || !nzchar(path_tmp_data) ||
+      is.null(path_tmp_results) || !nzchar(path_tmp_results)) {
+    stop("C++ exchange paths tmp_data and tmp_results must be set.", call. = FALSE)
+  }
   path_tmp_mesh <- paste0(path_list$tmp_data, "mesh/")
-  mkdir(path_tmp_mesh)
+  mkdir(c(path_tmp_data, path_tmp_results, path_tmp_mesh))
 
   # Write data for C++ scripts ----
 

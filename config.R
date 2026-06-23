@@ -87,10 +87,10 @@ TESTBENCH_CONFIG_PROFILES <- list(
         collapse = ","
       ),
       DEFAULT_CPUS = 1,
-      HEAVY_CPUS = 20,
       DEFAULT_MEM = "16GB",
-      HEAVY_MEM = "32GB",
       DEFAULT_TIME = "12:00:00",
+      HEAVY_CPUS = 20,
+      HEAVY_MEM = "32GB",
       HEAVY_TIME = "72:00:00",
       MULTITHREAD_CPUS = 20,
       MULTITHREAD_MEM = "32GB",

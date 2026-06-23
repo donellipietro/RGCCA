@@ -59,18 +59,13 @@ test_options <- list(
     n = 200,
     n_locs = 101
   ),
-  model_options = list(
-    cache_covariances = TRUE,
+  model_options = rgcca_model_options(
     n_comp = n_comp,
-    init_strategy = "uniform",
-    scheme = "factorial",
-    block_deactivation = TRUE,
-    connection_deactivation = TRUE,
-    component_significance = TRUE
+    init_strategy = "svd"
   ),
-  bootstrap_options = list(),
+  bootstrap_options = rgcca_bootstrap_options(),
   noise = list(
-    sigma_noise = 1
+    sigma_noise = 0
   )
 )
 
@@ -86,14 +81,15 @@ IGNORE_CPP_OUTPUT <- FALSE
 IGNORE_R_OUTPUT <- FALSE
 test_options$regularization$lambda <- 0
 test_options$model_options$n_comp <- n_comp
-fit_model <- CPP_RGCCA("CPP_GCCA_NN_cov", data, test_options, path_list)
+fit_model <- fit_model("CPP_GCCA_cor", data, path_list, test_options)
 
-idx = 1
+idx <- 1
 plot_list <- list()
-for(h in 1:n_comp) {
-  for(i in 1:4) {
-    plot_list[[idx]] <- plot.curve(data$locations_D, fit_model$results$A_hat_locs[[i]][,h],
-                                 true = data$A_locs[[i]][,h]) + std_plot_settings_curves()
+for (h in 1:n_comp) {
+  for (i in 1:4) {
+    plot_list[[idx]] <- plot.curve(data$locations_D, fit_model$results$A_hat_locs[[i]][, h],
+      true = data$A_locs[[i]][, h]
+    ) + std_plot_settings_curves()
     idx <- idx + 1
   }
 }

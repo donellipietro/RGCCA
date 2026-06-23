@@ -231,12 +231,12 @@ test_options <- list(
     n = 1200,
     n_locs = 101
   ),
-  model_options = list(
+  model_options = rgcca_model_options(
     n_comp = 3,
     init = "Uniform",
     lambda_selection_weights = TRUE
   ),
-  bootstrap_options = list(
+  bootstrap_options = rgcca_bootstrap_options(
     save_bootstrap_resamples = TRUE
   ),
   noise = list(

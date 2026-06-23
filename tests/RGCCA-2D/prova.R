@@ -61,10 +61,10 @@ test_options <- list(
     n_locs_mult = c(3, 2, 2, 3),
     n_times = c(1200)
   ),
-  model_options = list(
+  model_options = rgcca_model_options(
     n_comp = 3
   ),
-  bootstrap_options = list(),
+  bootstrap_options = rgcca_bootstrap_options(),
   noise = list(
     sigma_noise = 1
   ),

@@ -16,6 +16,7 @@ if (!exists("rgcca_model_options") ||
 generate_options <- function(test_suite, name_main_test, path_queue) {
   ## Create the directory (if it does not exist yet)
   mkdir(c(path_queue))
+  n_reps <- if (exists("SMOKE_TEST") && isTRUE(SMOKE_TEST)) 1 else 30
 
   ## Names of the models you want to compare
   # - model_names: used for indexing (no spaces, please)
@@ -69,7 +70,7 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
       model_colors = model_colors[c(6, 9, 12, 15, 18, 21)],
       cpp_script = "RGCCA",
       test_options = list(
-        n_reps = 1,
+        n_reps = n_reps,
         varying_options = c("lambda", "sigma_noise"),
         threading = threading
       ),
@@ -93,7 +94,7 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
       ),
       bootstrap_options = rgcca_bootstrap_options(),
       noise = list(
-        sigma_noise = c(0.01, 1.0, 2.0, 3.0, 4.0, 5.0)
+        sigma_noise = c(0, 1.0, 2.0, 3.0, 4.0, 5.0)
       ),
       regularization = list(
         lambda = lambda_values,
@@ -142,7 +143,7 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
         model_colors = model_colors[c(1, 4, 2, 5, 3, 6)],
         cpp_script = "RGCCA",
         test_options = list(
-          n_reps = 30,
+          n_reps = n_reps,
           varying_options = c("n", "n_locs")
         ),
         domain_and_locations = list(
@@ -219,17 +220,17 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
       write_sensitivity_options(
         lambda_values = -1,
         threading = "multi",
-        model_selection = FALSE
+        model_selection = TRUE
       )
     },
     testBootstrap = {
       options <- list(
-        model_names = model_names[c(9, 12, 18, 21)],
-        model_labels = model_labels[c(9, 12, 18, 21)],
-        model_colors = model_colors[c(9, 12, 18, 21)],
+        model_names = model_names[c(12, 21)],
+        model_labels = model_labels[c(12, 21)],
+        model_colors = model_colors[c(12, 21)],
         cpp_script = "RGCCA",
         test_options = list(
-          n_reps = 30,
+          n_reps = n_reps,
           varying_options = c("B_max", "sigma_noise")
         ),
         domain_and_locations = list(
@@ -251,12 +252,13 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
           component_significance = FALSE
         ),
         bootstrap_options = rgcca_bootstrap_options(
-          B_max = c(10, 100, 500, 1000),
+          B_max = c(10, 100, 500, 1000, -1),
           B_min = 10,
+          adaptive = FALSE,
           active_block_tol = 1e-3
         ),
         noise = list(
-          sigma_noise = c(0.01, 1.0, 2.0, 3.0, 4.0, 5.0)
+          sigma_noise = c(0, 1.0, 2.0, 3.0, 4.0, 5.0)
         ),
         regularization = list(
           lambda = c(-1),
@@ -276,7 +278,7 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
         paste(
           name_main_test,
           ## Include all the varying options!
-          "nbs", sprintf("%04d", comb_row$B_max),
+          "nbs", ifelse(comb_row$B_max < 0, "adaptive", sprintf("%04d", comb_row$B_max)),
           "sd", sprintf("%.3f", comb_row$sigma_noise),
           sep = "_"
         )
