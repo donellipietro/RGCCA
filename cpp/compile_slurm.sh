@@ -14,9 +14,10 @@ Options:
   -h, --help              Show this help.
 
 Environment options:
-  SLURM_COMPILE_CPUS      Compile job cpus-per-task (default: 1)
-  SLURM_COMPILE_MEM       Compile job memory (default: DEFAULT_MEM)
-  SLURM_COMPILE_TIME      Compile job walltime (default: DEFAULT_TIME)
+  SLURM_COMPILE_CPUS      Compile job cpus-per-task (default: MULTITHREAD_CPUS)
+  SLURM_COMPILE_MEM       Compile job memory (default: MULTITHREAD_MEM)
+  SLURM_COMPILE_TIME      Compile job walltime (default: MULTITHREAD_TIME)
+  SLURM_COMPILE_JOBS      Parallel compiler jobs (default: compile cpus)
   SLURM_DRY_RUN           Print sbatch command without submitting (0/1)
   SLURM_PARTITION         Optional Slurm partition
   SLURM_ACCOUNT           Optional Slurm account
@@ -173,9 +174,10 @@ case "$1" in
     ;;
 esac
 
-CPUS="${SLURM_COMPILE_CPUS:-${COMPILE_CPUS:-1}}"
-MEM="${SLURM_COMPILE_MEM:-${COMPILE_MEM:-${DEFAULT_MEM:-16GB}}}"
-TIME="${SLURM_COMPILE_TIME:-${COMPILE_TIME:-${DEFAULT_TIME:-04:00:00}}}"
+CPUS="${SLURM_COMPILE_CPUS:-${COMPILE_CPUS:-${MULTITHREAD_CPUS:-20}}}"
+MEM="${SLURM_COMPILE_MEM:-${COMPILE_MEM:-${MULTITHREAD_MEM:-32GB}}}"
+TIME="${SLURM_COMPILE_TIME:-${COMPILE_TIME:-${MULTITHREAD_TIME:-04:00:00}}}"
+JOBS="${SLURM_COMPILE_JOBS:-${COMPILE_JOBS:-${CPUS}}}"
 LOG_DIR="${PATH_LOGS}/slurm/compile"
 mkdir -p "${LOG_DIR}"
 
@@ -205,7 +207,8 @@ echo 'Started at:' \$(date)
 echo 'Working directory:' \$(pwd)
 echo "SLURM_JOB_ID: \${SLURM_JOB_ID:-unset}"
 echo "SLURM_CPUS_PER_TASK: \${SLURM_CPUS_PER_TASK:-unset}"
-${compile_cmd_quoted}
+echo "COMPILE_JOBS: ${JOBS}"
+COMPILE_JOBS='${JOBS}' ${compile_cmd_quoted}
 echo 'Finished at:' \$(date)
 echo '========================================'
 EOF

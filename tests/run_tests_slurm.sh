@@ -25,6 +25,7 @@ Environment options:
   SLURM_COMPILE_CPUS  Compile job cpus-per-task
   SLURM_COMPILE_MEM   Compile job memory
   SLURM_COMPILE_TIME  Compile job walltime
+  SLURM_COMPILE_JOBS  Parallel compiler jobs
   SLURM_AGGREGATE     Submit aggregate_results.R after all array tasks (0/1)
   SLURM_DRY_RUN       Print sbatch commands without submitting (0/1)
   SLURM_PARTITION     Optional Slurm partition
@@ -150,6 +151,7 @@ if is_truthy "${COMPILE_BEFORE_SUBMIT}"; then
     SLURM_COMPILE_CPUS="${SLURM_COMPILE_CPUS:-}" \
     SLURM_COMPILE_MEM="${SLURM_COMPILE_MEM:-}" \
     SLURM_COMPILE_TIME="${SLURM_COMPILE_TIME:-}" \
+    SLURM_COMPILE_JOBS="${SLURM_COMPILE_JOBS:-}" \
     SLURM_PARTITION="${SLURM_PARTITION:-}" \
     SLURM_ACCOUNT="${SLURM_ACCOUNT:-}" \
     SLURM_QOS="${SLURM_QOS:-}" \
@@ -160,6 +162,7 @@ if is_truthy "${COMPILE_BEFORE_SUBMIT}"; then
       SLURM_COMPILE_CPUS="${SLURM_COMPILE_CPUS:-}" \
       SLURM_COMPILE_MEM="${SLURM_COMPILE_MEM:-}" \
       SLURM_COMPILE_TIME="${SLURM_COMPILE_TIME:-}" \
+      SLURM_COMPILE_JOBS="${SLURM_COMPILE_JOBS:-}" \
       SLURM_PARTITION="${SLURM_PARTITION:-}" \
       SLURM_ACCOUNT="${SLURM_ACCOUNT:-}" \
       SLURM_QOS="${SLURM_QOS:-}" \

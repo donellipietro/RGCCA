@@ -262,12 +262,61 @@ headers_newer_than() {
   [[ -n "${newer}" ]]
 }
 
+normalized_compile_jobs() {
+  local value="${COMPILE_JOBS:-${MULTITHREAD_CPUS:-1}}"
+
+  if [[ ! "${value}" =~ ^[0-9]+$ || "${value}" -lt 1 ]]; then
+    echo "Warning: invalid COMPILE_JOBS='${value}', using 1." >&2
+    value=1
+  fi
+
+  printf '%s\n' "${value}"
+}
+
+compile_one_source() {
+  local build_dir="$1"
+  local src="$2"
+  local base bin out src_display out_display
+  local cmd
+
+  base="$(basename "${src}")"
+  bin="$(binary_name_for_source "${base}")"
+  out="${build_dir}/${bin}"
+
+  if [[ ! -f "${out}" || "${src}" -nt "${out}" ]] ||
+      headers_newer_than "${out}"; then
+    src_display="$(display_path "${src}")"
+    out_display="$(display_path "${out}")"
+    echo "- ${src_display}  ==>  ${out_display}"
+    cmd=("${CXX:-g++}")
+    for flag in "${cxx_flags[@]}"; do
+      cmd+=("${flag}")
+    done
+    cmd+=(-o "${out}" "${src}")
+    if [[ "${#ld_flags[@]}" -gt 0 ]]; then
+      for flag in "${ld_flags[@]}"; do
+        cmd+=("${flag}")
+      done
+    fi
+    if [[ "${#ld_libs[@]}" -gt 0 ]]; then
+      for flag in "${ld_libs[@]}"; do
+        cmd+=("${flag}")
+      done
+    fi
+    "${CPP_DIR}/run.sh" --quiet -- "${cmd[@]}"
+  else
+    echo "- $(display_path "${out}") is up to date"
+  fi
+}
+
 compile_model() {
   local model="$1"
   local target="${2:-}"
   local model_dir="${PATH_CPP}/${model}"
   local build_dir="${PATH_BUILD}/${model}"
-  local mains selected_mains src base bin out src_display out_display
+  local mains selected_mains src
+  local compile_job_limit compile_status pid
+  local compile_pids
 
   if [[ ! -d "${model_dir}" ]]; then
     echo "Error: model directory not found: ${model_dir}" >&2
@@ -310,37 +359,35 @@ compile_model() {
   mkdir -p "${build_dir}"
   ensure_ipopt_options "${build_dir}"
   compile_flags
+  compile_job_limit="$(normalized_compile_jobs)"
+  echo "Compile jobs: ${compile_job_limit}"
 
+  compile_pids=()
+  compile_status=0
   for src in "${selected_mains[@]}"; do
-    base="$(basename "${src}")"
-    bin="$(binary_name_for_source "${base}")"
-    out="${build_dir}/${bin}"
+    if [[ "${compile_job_limit}" -gt 1 && "${#selected_mains[@]}" -gt 1 ]]; then
+      compile_one_source "${build_dir}" "${src}" &
+      compile_pids+=("$!")
 
-    if [[ ! -f "${out}" || "${src}" -nt "${out}" ]] ||
-        headers_newer_than "${out}"; then
-      src_display="$(display_path "${src}")"
-      out_display="$(display_path "${out}")"
-      echo "- ${src_display}  ==>  ${out_display}"
-      cmd=("${CXX:-g++}")
-      for flag in "${cxx_flags[@]}"; do
-        cmd+=("${flag}")
-      done
-      cmd+=(-o "${out}" "${src}")
-      if [[ "${#ld_flags[@]}" -gt 0 ]]; then
-        for flag in "${ld_flags[@]}"; do
-          cmd+=("${flag}")
-        done
+      if [[ "${#compile_pids[@]}" -ge "${compile_job_limit}" ]]; then
+        if ! wait "${compile_pids[0]}"; then
+          compile_status=1
+        fi
+        compile_pids=("${compile_pids[@]:1}")
       fi
-      if [[ "${#ld_libs[@]}" -gt 0 ]]; then
-        for flag in "${ld_libs[@]}"; do
-          cmd+=("${flag}")
-        done
-      fi
-      "${CPP_DIR}/run.sh" --quiet -- "${cmd[@]}"
     else
-      echo "- $(display_path "${out}") is up to date"
+      compile_one_source "${build_dir}" "${src}"
     fi
   done
+
+  for pid in "${compile_pids[@]}"; do
+    if ! wait "${pid}"; then
+      compile_status=1
+    fi
+  done
+  if [[ "${compile_status}" -ne 0 ]]; then
+    exit "${compile_status}"
+  fi
 
   printf 'All the source files have been compiled!\n\n'
 }

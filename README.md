@@ -43,7 +43,12 @@ On a Slurm cluster:
 
 ```bash
 make compile_slurm MODEL=RGCCA TARGET=fit_model_RGCCA
+make compile_all_slurm
 ```
+
+Slurm compilation defaults to the profile's multithread resources. Override the
+allocation with `SLURM_COMPILE_CPUS`, `SLURM_COMPILE_MEM`, or
+`SLURM_COMPILE_TIME`; override compiler fan-out with `SLURM_COMPILE_JOBS`.
 
 ### 3. Run a test
 

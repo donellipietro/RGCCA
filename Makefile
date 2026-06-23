@@ -25,8 +25,10 @@ SLURM_AGG_TIME ?=
 SLURM_COMPILE_CPUS ?=
 SLURM_COMPILE_MEM ?=
 SLURM_COMPILE_TIME ?=
+SLURM_COMPILE_JOBS ?=
 SLURM_COMPILE_MODEL ?=
 SLURM_COMPILE_TARGET ?=
+COMPILE_JOBS ?=
 COMPILE_TARGET ?= $(if $(TARGET),$(TARGET),$(if $(EXEC),$(EXEC),$(SOURCE)))
 
 define config_value
@@ -103,7 +105,7 @@ build: write_env create_dirs install
 
 ## Compile all models under cpp/
 compile_all: ensure_env
-	@./cpp/compile.sh --all
+	@COMPILE_JOBS="$(COMPILE_JOBS)" ./cpp/compile.sh --all
 
 ## Compile all mains found in cpp/$(MODEL), or one executable with TARGET
 # Usage: make compile MODEL=my_model [TARGET=fit_model]
@@ -116,7 +118,7 @@ compile: ensure_env
 		if [ -n "$(COMPILE_TARGET)" ]; then \
 			args+=("$(COMPILE_TARGET)"); \
 		fi; \
-		./cpp/compile.sh "$${args[@]}"; \
+		COMPILE_JOBS="$(COMPILE_JOBS)" ./cpp/compile.sh "$${args[@]}"; \
 	fi
 
 ## Submit a C++ compile job to Slurm
@@ -133,6 +135,7 @@ compile_slurm: ensure_env
 		SLURM_COMPILE_CPUS="$(SLURM_COMPILE_CPUS)" \
 		SLURM_COMPILE_MEM="$(SLURM_COMPILE_MEM)" \
 		SLURM_COMPILE_TIME="$(SLURM_COMPILE_TIME)" \
+		SLURM_COMPILE_JOBS="$(SLURM_COMPILE_JOBS)" \
 		SLURM_DRY_RUN="$(SLURM_DRY_RUN)" \
 		SLURM_PARTITION="$(SLURM_PARTITION)" \
 		SLURM_ACCOUNT="$(SLURM_ACCOUNT)" \
@@ -145,6 +148,7 @@ compile_all_slurm: ensure_env
 	@SLURM_COMPILE_CPUS="$(SLURM_COMPILE_CPUS)" \
 	SLURM_COMPILE_MEM="$(SLURM_COMPILE_MEM)" \
 	SLURM_COMPILE_TIME="$(SLURM_COMPILE_TIME)" \
+	SLURM_COMPILE_JOBS="$(SLURM_COMPILE_JOBS)" \
 	SLURM_DRY_RUN="$(SLURM_DRY_RUN)" \
 	SLURM_PARTITION="$(SLURM_PARTITION)" \
 	SLURM_ACCOUNT="$(SLURM_ACCOUNT)" \
@@ -272,6 +276,7 @@ run_test_slurm:
 		SLURM_COMPILE_CPUS="$(SLURM_COMPILE_CPUS)" \
 		SLURM_COMPILE_MEM="$(SLURM_COMPILE_MEM)" \
 		SLURM_COMPILE_TIME="$(SLURM_COMPILE_TIME)" \
+		SLURM_COMPILE_JOBS="$(SLURM_COMPILE_JOBS)" \
 		SLURM_COMPILE_MODEL="$(SLURM_COMPILE_MODEL)" \
 		SLURM_COMPILE_TARGET="$(SLURM_COMPILE_TARGET)" \
 		SMOKE_TEST="$(SMOKE_TEST)" \

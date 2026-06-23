@@ -14,7 +14,7 @@ FORCE_EVALUATE <- FALSE
 ## Execution flow modifiers
 RUN <- list()
 RUN$tests <- TRUE
-SMOKE_TEST <- TRUE
+SMOKE_TEST <- FALSE
 SMOKE_TEST <- isTRUE(SMOKE_TEST) ||
   tolower(Sys.getenv("SMOKE_TEST", "false")) %in% c("1", "true", "yes", "y")
 

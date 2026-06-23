@@ -126,7 +126,7 @@ if (length(args) == 0) {
 ## Select the test option
 if (is.null(file_options)) {
   file_options_list
-  file_options <- file_options_list[3] ## <====== INPUT HERE
+  file_options <- file_options_list[1] ## <====== INPUT HERE
 }
 
 ## Load selected options

@@ -56,7 +56,6 @@ int main(int argc, char *argv[]) {
   RGCCA<IndependentSampling>::Options options;
   options.init_strategy = InitStrategy::SVD;
   rgcca_driver::apply_rgcca_options(jroot["model_options"], options, tau);
-  std::cout << options << std::endl;
 
   RGCCA<IndependentSampling>::BootstrapConfig bootstrap_config;
   rgcca_driver::apply_bootstrap_options(jroot["bootstrap_options"],
