@@ -26,7 +26,7 @@ options(warn = -1)
 
 invisible(suppressMessages(sapply(c(
   # discretization
-  "fdaPDE", "femR",
+  "femR",
   # algebraic utils
   "pracma",
   # data manipulation

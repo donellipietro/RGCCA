@@ -33,7 +33,7 @@ invisible(suppressMessages(sapply(c(
   ## Competitors
   "RGCCA", "FGCCA",
   # discretization
-  "fdaPDE", "femR",
+  "femR",
   #
   "clue",
   # algebraic utils

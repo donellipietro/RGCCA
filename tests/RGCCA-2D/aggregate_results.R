@@ -23,7 +23,7 @@ height <- 15
 ## Load libraries ----
 invisible(suppressMessages(sapply(c(
   # discretization
-  "fdaPDE", "femR",
+  "femR",
   # algebraic utils
   "pracma",
   # data manipulation

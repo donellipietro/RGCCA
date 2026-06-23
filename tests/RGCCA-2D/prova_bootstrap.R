@@ -6,7 +6,7 @@ invisible(suppressMessages(sapply(c(
   ## Competitors
   "RGCCA",
   # discretization
-  "fdaPDE", "femR",
+  "femR",
   # algebraic utils
   "pracma",
   # data manipulation

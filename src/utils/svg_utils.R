@@ -5,7 +5,7 @@ library(sp)
 
 invisible(suppressMessages(sapply(c(
   # discretization
-  "fdaPDE", "femR",
+  "femR",
   # algebraic utils
   "pracma",
   # data manipulation
@@ -421,8 +421,6 @@ rings_to_polygons_by_containment <- function(rings) {
 
 
 ####
-
-library(fdaPDE)
 #' Build cyclic boundary segments from ordered ring nodes.
 #'
 #' @param nodes Node coordinate matrix.
@@ -621,4 +619,3 @@ plot_multi_mesh <- function(mesh_list) {
 
   p
 }
-
