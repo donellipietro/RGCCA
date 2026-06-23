@@ -56,12 +56,14 @@ read_env_file_value <- function(name, env_file = ".env") {
 #' @param profile Explicit profile value.
 #' @return The resolved profile name.
 resolve_config_profile <- function(profile = NULL) {
-  first_non_empty(
+  profile <- first_non_empty(
     profile,
     Sys.getenv("TESTBENCH_PROFILE", unset = ""),
     read_env_file_value("TESTBENCH_PROFILE"),
     "macbook"
   )
+
+  profile
 }
 
 #' Resolve one configuration value from a profile and environment overrides.

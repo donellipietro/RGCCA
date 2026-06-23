@@ -51,7 +51,7 @@ TESTBENCH_CONFIG_PROFILES <- list(
       R_LIBS_SITE = Sys.getenv("R_LIBS_SITE", unset = "")
     )
   }),
-  donders_hcp = local({
+  `donders-hcp` = local({
     PATH_HOME <- "/home/preclineu/piedon"
     PATH_REPO <- file.path(PATH_HOME, "Documents/RGCCA")
     PATH_OUTPUT <- "/project/3022000.05/piedon/RGCCA"

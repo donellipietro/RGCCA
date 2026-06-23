@@ -4,7 +4,11 @@ SHELL := /bin/bash
 RSCRIPT ?= Rscript
 
 ACTIVE_ENV_PROFILE := $(strip $(shell if [ -f .env ]; then set -a; . ./.env >/dev/null 2>&1; printf '%s' "$$TESTBENCH_PROFILE"; fi))
+REQUESTED_PROFILE := $(strip $(PROFILE))
 TESTBENCH_PROFILE ?= $(if $(ACTIVE_ENV_PROFILE),$(ACTIVE_ENV_PROFILE),macbook)
+ifneq ($(REQUESTED_PROFILE),)
+override TESTBENCH_PROFILE := $(REQUESTED_PROFILE)
+endif
 SLURM_ARRAY_LIMIT ?=
 SLURM_COMPILE ?= 0
 SLURM_AGGREGATE ?= 1
@@ -32,7 +36,7 @@ COMPILE_JOBS ?=
 COMPILE_TARGET ?= $(if $(TARGET),$(TARGET),$(if $(EXEC),$(EXEC),$(SOURCE)))
 
 define config_value
-$(strip $(shell $(RSCRIPT) -e 'source("config.R"); cfg <- get_config("$(TESTBENCH_PROFILE)"); value <- cfg[["$(1)"]]; if (is.null(value)) value <- ""; cat(value)'))
+$(strip $(shell $(RSCRIPT) -e 'source("config.R"); profile <- "$(TESTBENCH_PROFILE)"; if (!profile %in% available_profiles()) quit(status = 0); cfg <- get_config(profile); value <- cfg[["$(1)"]]; if (is.null(value)) value <- ""; cat(value)'))
 endef
 
 
@@ -51,7 +55,7 @@ PATH_BUILD := $(call config_value,PATH_BUILD)
 
 
 # Targets ----
-.PHONY: help config write_env install install_femR build create_dirs \
+.PHONY: help config write_env require_build_profile install install_femR build create_dirs \
         ensure_env \
         compile compile_all compile_slurm compile_all_slurm \
         clean_tmp clean_compiled clean_links clean clean_test distclean \
@@ -71,9 +75,21 @@ config:
 write_env:
 	@$(RSCRIPT) config.R --profile "$(TESTBENCH_PROFILE)" --write-env
 
+require_build_profile:
+	@if [ -z "$(REQUESTED_PROFILE)" ]; then \
+		echo "Error: make build requires an explicit PROFILE."; \
+		echo ""; \
+		echo "Usage:"; \
+		echo "  make build PROFILE=<profile>"; \
+		echo ""; \
+		echo "Available profiles:"; \
+		$(RSCRIPT) -e 'source("config.R"); cat(paste0("  - ", available_profiles(), collapse = "\n"), "\n", sep = "")'; \
+		exit 1; \
+	fi
+
 ensure_env:
 	@if [ ! -f .env ]; then \
-		echo "Error: .env not found. Run: make build TESTBENCH_PROFILE=<profile>"; \
+		echo "Error: .env not found. Run: make build PROFILE=<profile>"; \
 		exit 1; \
 	fi
 
@@ -98,7 +114,7 @@ create_dirs:
 	@$(RSCRIPT) config.R --profile "$(TESTBENCH_PROFILE)" --create-dirs
 
 ## Write .env, create directories, and install dependencies
-build: write_env create_dirs install
+build: require_build_profile write_env create_dirs install
 	@printf '\nBuild completed.\n\n'
 	
 # Compile targets ----

@@ -14,7 +14,7 @@ Runtime paths, compilers, output directories, and cluster settings are stored in
 `config.R`. Build the active profile once:
 
 ```bash
-make build TESTBENCH_PROFILE=macbook
+make build PROFILE=macbook
 ```
 
 This writes `.env`, creates generated directories, and installs the configured R
@@ -24,7 +24,7 @@ Useful profile commands:
 
 ```bash
 make config
-make build TESTBENCH_PROFILE=donders_hcp
+make build PROFILE=donders-hcp
 make clean
 make distclean
 ```

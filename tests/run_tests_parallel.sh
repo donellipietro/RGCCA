@@ -14,7 +14,7 @@ PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 cd "${PROJECT_DIR}"
 if [[ ! -f "${PROJECT_DIR}/.env" ]]; then
-  echo "Error: .env not found. Run: make build TESTBENCH_PROFILE=<profile>"
+  echo "Error: .env not found. Run: make build PROFILE=<profile>"
   exit 1
 fi
 
