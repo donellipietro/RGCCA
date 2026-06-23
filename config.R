@@ -37,6 +37,8 @@ TESTBENCH_CONFIG_PROFILES <- list(
       PATH_IPOPT_INCLUDE = "/opt/homebrew/opt/ipopt/include/coin-or",
       PATH_IPOPT_LIB = "/opt/homebrew/opt/ipopt/lib",
       PATH_EIGEN_INCLUDE = "/opt/homebrew/include/eigen3",
+      IPOPT_LINEAR_SOLVER = "ma57",
+      IPOPT_HSL_LIBRARY = "/Users/pietrodonelli/local/hsl/lib/libcoinhsl.dylib",
 
       # If SINGULARITY_IMAGE is empty, compile on the host machine.
       SINGULARITY_IMAGE = "",
@@ -55,6 +57,7 @@ TESTBENCH_CONFIG_PROFILES <- list(
     PATH_OUTPUT <- "/project/3022000.05/piedon/RGCCA"
     PATH_TMP <- file.path(PATH_OUTPUT, "tmp")
     PATH_FDAPDE_CPP <- file.path(PATH_HOME, "fdaPDE-cpp")
+    PATH_HSL <- file.path(PATH_HOME, "local/hsl")
 
     list(
       PATH_REPO = PATH_REPO,
@@ -79,11 +82,13 @@ TESTBENCH_CONFIG_PROFILES <- list(
       PATH_IPOPT_INCLUDE = "/usr/include/coin-or/",
       PATH_IPOPT_LIB = "/usr/lib/ipopt",
       PATH_EIGEN_INCLUDE = "/usr/include/eigen3",
+      IPOPT_LINEAR_SOLVER = "ma57",
+      IPOPT_HSL_LIBRARY = "/home/preclineu/piedon/local/hsl/lib64/libcoinhsl.so",
 
       # If SINGULARITY_IMAGE is filled, compile through Singularity.
       SINGULARITY_IMAGE = file.path(PATH_HOME, "fdapde-docker_ipopt.sif"),
       SINGULARITY_BIND_PATHS = paste(
-        unique(c(PATH_REPO, PATH_OUTPUT, PATH_FDAPDE_CPP)),
+        unique(c(PATH_REPO, PATH_OUTPUT, PATH_FDAPDE_CPP, PATH_HSL)),
         collapse = ","
       ),
       DEFAULT_CPUS = 1,

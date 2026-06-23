@@ -156,6 +156,7 @@ compile_all_slurm: ensure_env
 ## Clean temporary files
 clean_tmp:
 	@$(RM) -r "$(PATH_TMP)"
+	@$(RSCRIPT) config.R --profile "$(TESTBENCH_PROFILE)" --create-dirs
 	
 ## Clean compiled binaries
 clean_compiled:
@@ -167,7 +168,7 @@ clean_links:
 	@$(RSCRIPT) config.R --profile "$(TESTBENCH_PROFILE)" --remove-links
 
 ## Clean temporary files, logs and R session files
-clean: clean_tmp clean_links
+clean: clean_tmp
 	@printf '\nCleaning temporary files...\n'
 	@$(RM) *.aux *.log *.pdf *.txt *.json
 	@$(RM) .Rhistory
@@ -197,6 +198,7 @@ clean_test:
 distclean: clean clean_compiled
 	@echo "Attention! This will remove ALL the additional files and directories generated so far."
 	@read -p "Are you sure you want to continue? [y/n]: " confirm && [ "$$confirm" = "y" ] || (echo "Cleanup aborted." && false)
+	@$(RSCRIPT) config.R --profile "$(TESTBENCH_PROFILE)" --remove-links
 	@echo "Removing additional generated files..."
 	@$(RM) -r "$(PATH_IMAGES)"
 	@$(RM) -r "$(PATH_RESULTS)"

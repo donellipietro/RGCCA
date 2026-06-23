@@ -30,6 +30,40 @@ config_env <- function(name, default = "") {
   first_non_empty(Sys.getenv(paste0("TESTBENCH_", name), unset = ""), default)
 }
 
+#' Read one variable from the repository `.env` file without sourcing shell code.
+#'
+#' @param name Environment variable name.
+#' @param env_file Path to a shell-style `.env` file.
+#' @return The variable value, or an empty string.
+read_env_file_value <- function(name, env_file = ".env") {
+  if (!file.exists(env_file)) return("")
+
+  lines <- readLines(env_file, warn = FALSE)
+  prefix <- paste0(name, "=")
+  match <- lines[startsWith(lines, prefix)]
+  if (length(match) == 0) return("")
+
+  value <- sub(paste0("^", name, "="), "", match[1])
+  value <- trimws(value)
+  if (grepl("^'.*'$", value) || grepl('^".*"$', value)) {
+    value <- substr(value, 2, nchar(value) - 1)
+  }
+  value
+}
+
+#' Resolve the active profile from explicit input, environment, `.env`, fallback.
+#'
+#' @param profile Explicit profile value.
+#' @return The resolved profile name.
+resolve_config_profile <- function(profile = NULL) {
+  first_non_empty(
+    profile,
+    Sys.getenv("TESTBENCH_PROFILE", unset = ""),
+    read_env_file_value("TESTBENCH_PROFILE"),
+    "macbook"
+  )
+}
+
 #' Resolve one configuration value from a profile and environment overrides.
 #'
 #' @param cfg Configuration profile list.
@@ -116,8 +150,8 @@ available_profiles <- function() {
 #'
 #' @param profile Runtime profile name.
 #' @return The value produced by `get_config`.
-get_config <- function(profile = Sys.getenv("TESTBENCH_PROFILE", "macbook")) {
-  profile <- first_non_empty(profile, "macbook")
+get_config <- function(profile = NULL) {
+  profile <- resolve_config_profile(profile)
 
   if (!exists("TESTBENCH_CONFIG_PROFILES", envir = .GlobalEnv)) {
     stop("TESTBENCH_CONFIG_PROFILES is not defined. Source config.R first.", call. = FALSE)
@@ -264,7 +298,59 @@ create_config_dirs <- function(cfg = get_config()) {
   }
 
   create_config_links(cfg)
+  write_ipopt_options(cfg)
   invisible(dirs)
+}
+
+#' Return lines for an Ipopt options file from the active profile.
+#'
+#' @param cfg Configuration profile list.
+#' @return Character vector of options.
+ipopt_options_lines <- function(cfg = get_config()) {
+  lines <- c(
+    "print_level 0",
+    "sb yes",
+    "print_user_options no",
+    "print_timing_statistics no",
+    "",
+    "hessian_approximation exact",
+    "nlp_scaling_method none",
+    "",
+    "mu_strategy adaptive",
+    "",
+    "tol 1e-9",
+    "",
+    "acceptable_tol 1e-6",
+    "acceptable_iter 10",
+    "",
+    "bound_push 1e-12",
+    "bound_frac 1e-12",
+    "bound_relax_factor 0"
+  )
+
+  linear_solver <- cfg$IPOPT_LINEAR_SOLVER
+  if (!is.null(linear_solver) && nzchar(linear_solver)) {
+    lines <- c(lines, "", paste("linear_solver", linear_solver))
+  }
+
+  hsl_library <- cfg$IPOPT_HSL_LIBRARY
+  if (!is.null(hsl_library) && nzchar(hsl_library)) {
+    lines <- c(lines, paste("hsllib", hsl_library))
+  }
+
+  lines
+}
+
+#' Write the profile-specific Ipopt options file used by C++ executables.
+#'
+#' @param cfg Configuration profile list.
+#' @param file Path where `ipopt.opt` should be written.
+#' @return The file path, invisibly.
+write_ipopt_options <- function(cfg = get_config(),
+                                file = file.path(cfg$PATH_CPP, "ipopt.opt")) {
+  dir.create(dirname(file), recursive = TRUE, showWarnings = FALSE)
+  writeLines(ipopt_options_lines(cfg), con = file)
+  invisible(file)
 }
 
 #' Write the selected profile to a shell-readable `.env` file.
@@ -310,7 +396,7 @@ config_usage <- function() {
 #' @return The value produced by `parse_config_cli`.
 parse_config_cli <- function(args) {
   out <- list(
-    profile = Sys.getenv("TESTBENCH_PROFILE", "macbook"),
+    profile = resolve_config_profile(),
     print = FALSE,
     write_env = FALSE,
     create_dirs = FALSE,
@@ -399,6 +485,9 @@ config_main <- function() {
 
   if (args$create_dirs) {
     create_config_dirs(cfg)
+  }
+  if (args$write_env) {
+    write_ipopt_options(cfg)
   }
 
   if (args$remove_links) {
