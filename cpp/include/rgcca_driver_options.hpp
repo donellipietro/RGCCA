@@ -341,9 +341,6 @@ void apply_bootstrap_options(const json &joptions, BootstrapConfig &config) {
   config.active_connection_min_abs_corr =
       read_number_option<double>(joptions, {"active_connection_min_abs_corr"},
                                  config.active_connection_min_abs_corr);
-  config.aggressive_connection_deactivation = read_bool_option(
-      joptions, {"aggressive_connection_deactivation"},
-      config.aggressive_connection_deactivation);
   config.min_boots_before_connection_deactivation =
       read_number_option<int>(
           joptions, {"min_boots_before_connection_deactivation"},
@@ -593,13 +590,23 @@ void write_bootstrap_metadata(const std::string &path_results,
                     int_vector_to_double_column(boot.B_used_by_lambda));
 
   for (std::size_t i = 0; i < boot.lambda_grid.size(); ++i) {
-    if (save_resamples && i < boot.corr_boot_by_lambda.size()) {
+    if (save_resamples && i < boot.corr_boot_by_lambda.size() &&
+        boot.corr_boot_by_lambda[i].cols() > 0) {
       fdapde::write_csv(path_results + "bootstrap_corr_boot_comp" +
                             std::to_string(component_index + 1) + "_lambda" +
                             std::to_string(i + 1) + ".csv",
                         boot.corr_boot_by_lambda[i]);
     }
   }
+}
+
+template <typename BootstrapResult>
+bool has_bootstrap_weight_resamples(const BootstrapResult &boot,
+                                    const std::size_t lambda_index,
+                                    const std::size_t block_index) {
+  return lambda_index < boot.w_boot_by_lambda.size() &&
+         block_index < boot.w_boot_by_lambda[lambda_index].size() &&
+         boot.w_boot_by_lambda[lambda_index][block_index].cols() > 0;
 }
 
 } // namespace rgcca_driver

@@ -164,7 +164,8 @@ int main(int argc, char *argv[]) {
                         std::to_string(i + 1) + "_block" +
                         std::to_string(j + 1) + "_locs.csv",
                     block->Psi_D() * boot.w_fit_by_lambda[i][j]);
-          if (save_resamples) {
+          if (save_resamples &&
+              rgcca_driver::has_bootstrap_weight_resamples(boot, i, j)) {
             write_csv(path_results + "bootstrap_weights_boot_comp" +
                           std::to_string(h + 1) + "_lambda" +
                           std::to_string(i + 1) + "_block" +

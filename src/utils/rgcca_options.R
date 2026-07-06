@@ -139,6 +139,20 @@ is_default_rgcca_token <- function(value) {
   token %in% c("", "default")
 }
 
+#' Validate and canonicalize a string option.
+#'
+#' @param value String option value.
+#' @param choices Named character vector mapping accepted tokens to output values.
+#' @param name Option name used in error messages.
+#' @return The canonical option value.
+match_string_option <- function(value, choices, name) {
+  if (!is.character(value) || length(value) != 1) {
+    stop(paste0(name, " must be one of: ", paste(unique(choices), collapse = ", ")), call. = FALSE)
+  }
+  token <- tolower(gsub("[_ -]", "", value))
+  choices[[match.arg(token, names(choices))]]
+}
+
 
 #' Infer the RGCCA mode corresponding to a tau value.
 #'
@@ -193,7 +207,7 @@ effective_rgcca_model_options <- function(model_options,
     model_options$mode <- rgcca_mode_from_tau(tau)
   }
   if (!is.null(non_negative_weights) &&
-      is_default_rgcca_token(model_options$weight_sign_constraint)) {
+    is_default_rgcca_token(model_options$weight_sign_constraint)) {
     model_options$weight_sign_constraint <-
       rgcca_weight_sign_constraint(non_negative_weights)
   }
@@ -383,7 +397,6 @@ rgcca_bootstrap_option_defaults <- function() {
     active_block_tol = 1e-8,
     active_connection_sign_stability = 0.95,
     active_connection_min_abs_corr = 0.05,
-    aggressive_connection_deactivation = FALSE,
     min_boots_before_connection_deactivation = 100,
     ci_level = 0.95,
     patience = 1,
@@ -447,7 +460,6 @@ collect_cpp_bootstrap_options <- function(bootstrap_options) {
     "stable_checks_required", "active_block_tol",
     "active_connection_sign_stability",
     "active_connection_min_abs_corr",
-    "aggressive_connection_deactivation",
     "min_boots_before_connection_deactivation",
     "ci_level",
     "patience", "resampling_strategy",
@@ -892,6 +904,18 @@ load_cpp_bootstrap_selection <- function(path_results, n_comp, n_groups, grid_D 
         NULL
       },
       B = if (!is.null(metadata) && "B" %in% names(metadata)) metadata$B[1] else NULL,
+      B_used = if (!is.null(B_used_by_lambda) &&
+        !is.null(metadata) &&
+        "lambda_opt_index" %in% names(metadata)) {
+        idx <- metadata$lambda_opt_index[1]
+        if (!is.na(idx) && idx >= 1 && idx <= length(B_used_by_lambda)) {
+          B_used_by_lambda[idx]
+        } else {
+          NULL
+        }
+      } else {
+        NULL
+      },
       ci_level = if (!is.null(metadata) && "ci_level" %in% names(metadata)) {
         metadata$ci_level[1]
       } else {
@@ -957,7 +981,7 @@ rgcca_model_options <- function(n_comp = 3,
                                 tol = 1e-8,
                                 cache_covariances = TRUE,
                                 bias = TRUE,
-                                init = NULL,
+                                ...,
                                 init_strategy = "svd",
                                 lambda_selection_weights = FALSE,
                                 lambda_selection_components = "Automatic",
@@ -967,7 +991,6 @@ rgcca_model_options <- function(n_comp = 3,
                                 component_significance = FALSE,
                                 mode = "Default",
                                 weight_sign_constraint = "Default",
-                                deflation = NULL,
                                 deflation_mode = "Scores",
                                 scheme = "Factorial",
                                 solver = NULL,
@@ -977,15 +1000,51 @@ rgcca_model_options <- function(n_comp = 3,
                                 non_negative_weights = NULL,
                                 lambda_grid = NULL,
                                 include_defaults = TRUE) {
-  if (!missing(init)) {
-    stop("Option 'init' was removed; use 'init_strategy'.", call. = FALSE)
-  }
-  if (!missing(deflation)) {
-    stop("Option 'deflation' was removed; use 'deflation_mode'.", call. = FALSE)
+  extra_args <- list(...)
+  if (length(extra_args) > 0) {
+    stop(
+      paste0("unused argument(s): ", paste(names(extra_args), collapse = ", ")),
+      call. = FALSE
+    )
   }
   supplied_options <- setdiff(
     names(as.list(match.call(expand.dots = FALSE)))[-1],
-    c("include_defaults", "init", "deflation")
+    c("include_defaults", "...")
+  )
+  init_strategy <- match_string_option(
+    init_strategy,
+    c(default = "Default", none = "None", svd = "SVD", uniform = "Uniform", warmstart = "WarmStart"),
+    "init_strategy"
+  )
+  lambda_selection_components <- match_string_option(
+    lambda_selection_components,
+    c(default = "Default", manual = "Manual", auto = "Automatic", automatic = "Automatic"),
+    "lambda_selection_components"
+  )
+  mode <- match_string_option(
+    mode,
+    c(
+      default = "Default",
+      cor = "CorMax", cormax = "CorMax", correlation = "CorMax",
+      regularized = "Regularized", rgcca = "Regularized", reg = "Regularized",
+      cov = "CovMax", covmax = "CovMax", covariance = "CovMax"
+    ),
+    "mode"
+  )
+  weight_sign_constraint <- match_string_option(
+    weight_sign_constraint,
+    c(default = "Default", none = "None", nonnegative = "NonNegative", nn = "NonNegative"),
+    "weight_sign_constraint"
+  )
+  deflation_mode <- match_string_option(
+    deflation_mode,
+    c(default = "Default", none = "None", scores = "Scores", score = "Scores"),
+    "deflation_mode"
+  )
+  scheme <- match_string_option(
+    scheme,
+    c(default = "Default", horst = "Horst", centroid = "Centroid", factorial = "Factorial"),
+    "scheme"
   )
   model_options <- list(
     n_comp = n_comp,
@@ -1043,7 +1102,6 @@ rgcca_model_options <- function(n_comp = 3,
 #' @param active_block_tol Active-block tolerance.
 #' @param active_connection_sign_stability Sign-stability threshold for active connections.
 #' @param active_connection_min_abs_corr Minimum absolute correlation for active connections.
-#' @param aggressive_connection_deactivation Whether connection deactivation can happen before B_min.
 #' @param min_boots_before_connection_deactivation Minimum resamples before deactivating connections.
 #' @param ci_level Confidence interval level.
 #' @param patience Adaptive-stopping patience.
@@ -1052,21 +1110,20 @@ rgcca_model_options <- function(n_comp = 3,
 #' @param save_bootstrap_resamples Whether bootstrap resamples are saved.
 #' @param include_defaults Whether missing options should be filled from defaults.
 #' @return The value produced by `rgcca_bootstrap_options`.
-rgcca_bootstrap_options <- function(B_max = 5000,
-                                    B_min = 60,
+rgcca_bootstrap_options <- function(B_max = 15000,
+                                    B_min = 200,
                                     resampling_strategy = "Ordinary",
                                     stationary_block_length = 0,
                                     seed = 12345,
                                     max_threads = rgcca_max_threads(),
-                                    check_every = 5,
-                                    fit_max_iter = -1,
+                                    check_every = 100,
+                                    fit_max_iter = 100,
                                     adaptive = TRUE,
                                     adaptive_tol = 1e-3,
                                     stable_checks_required = 3,
-                                    active_block_tol = 1e-8,
+                                    active_block_tol = 0.1,
                                     active_connection_sign_stability = 0.95,
                                     active_connection_min_abs_corr = 0.05,
-                                    aggressive_connection_deactivation = FALSE,
                                     min_boots_before_connection_deactivation = 100,
                                     ci_level = 0.95,
                                     patience = 1,
@@ -1077,6 +1134,11 @@ rgcca_bootstrap_options <- function(B_max = 5000,
   supplied_options <- setdiff(
     names(as.list(match.call(expand.dots = FALSE)))[-1],
     "include_defaults"
+  )
+  resampling_strategy <- match_string_option(
+    resampling_strategy,
+    c(default = "Default", ordinary = "Ordinary", stationary = "Stationary"),
+    "resampling_strategy"
   )
   bootstrap_options <- list(
     B_max = B_max,
@@ -1093,7 +1155,6 @@ rgcca_bootstrap_options <- function(B_max = 5000,
     active_block_tol = active_block_tol,
     active_connection_sign_stability = active_connection_sign_stability,
     active_connection_min_abs_corr = active_connection_min_abs_corr,
-    aggressive_connection_deactivation = aggressive_connection_deactivation,
     min_boots_before_connection_deactivation = min_boots_before_connection_deactivation,
     ci_level = ci_level,
     patience = patience,

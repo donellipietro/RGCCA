@@ -35,7 +35,9 @@ evaluate_results <- function(model, data) {
     bootstrap <- model$model_selection$bootstrap
     if (!is.null(bootstrap)) {
       for (h in seq_len(min(length(bootstrap), n_comp))) {
-        if (!is.null(bootstrap[[h]]$B)) {
+        if (!is.null(bootstrap[[h]]$B_used) && is.finite(bootstrap[[h]]$B_used)) {
+          out[h] <- bootstrap[[h]]$B_used
+        } else if (!is.null(bootstrap[[h]]$B)) {
           out[h] <- bootstrap[[h]]$B
         }
       }

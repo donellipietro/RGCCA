@@ -590,7 +590,8 @@ plot.grouped_boxplots <- function(data,
                                   group_name = "Components", group_labels = NULL,
                                   subgroup_name = "Models", subgroup_labels = NULL, subgroup_colors = NULL,
                                   values_name = "Score", limits = NULL,
-                                  DIVIDERS = TRUE, LEGEND = TRUE, LOGY = FALSE) {
+                                  DIVIDERS = TRUE, LEGEND = TRUE, LOGY = FALSE,
+                                  ADAPTIVE_LIMITS = FALSE) {
 
   ## Data integrity check
   if (!("Group" %in% names(data))) stop("The dataframe must contain a column named 'Group'")
@@ -614,6 +615,23 @@ plot.grouped_boxplots <- function(data,
     mutate(Group = factor(Group, levels = groups_levels, labels = group_labels)) %>%
     mutate(SubGroup = factor(SubGroup, levels = subgroup_levels, labels = subgroup_labels))
 
+  if (isTRUE(ADAPTIVE_LIMITS) && !isTRUE(LOGY)) {
+    stats <- unlist(lapply(
+      split(data$Score, list(data$Group, data$SubGroup), drop = TRUE),
+      function(x) {
+        x <- as.numeric(x)
+        x <- x[is.finite(x)]
+        if (length(x) == 0) return(numeric(0))
+        boxplot.stats(x)$stats
+      }
+    ))
+    stats <- stats[is.finite(stats)]
+    if (length(stats) > 0) {
+      limits <- range(c(0, stats))
+      limits[2] <- limits[2] * 1.05
+    }
+  }
+
   ## Build plot
   plot <- ggplot(data, aes(x = Group, y = Score, fill = SubGroup, color = SubGroup)) +
     geom_boxplot(na.rm = TRUE) +
@@ -625,7 +643,11 @@ plot.grouped_boxplots <- function(data,
   if (isTRUE(LOGY)) {
     plot <- plot + scale_y_log10(limits = limits)
   } else if (!is.null(limits)) {
-    plot <- plot + scale_y_continuous(limits = limits)
+    plot <- if (isTRUE(ADAPTIVE_LIMITS)) {
+      plot + coord_cartesian(ylim = limits)
+    } else {
+      plot + scale_y_continuous(limits = limits)
+    }
   }
 
   ## Add dividers
@@ -1022,7 +1044,8 @@ plot.aggregated_data <- function(loaded_results, data_plot_orig, title_prefix, v
           subgroup_colors = model_colors[match(valid_models, model_names)],
           limits = limits,
           LEGEND = FALSE,
-          LOGY = isTRUE(plots_catalog$boxplot_logy)
+          LOGY = isTRUE(plots_catalog$boxplot_logy),
+          ADAPTIVE_LIMITS = isTRUE(plots_catalog$boxplot_adaptive_limits)
         ) + std_plot_settings()
       }
 

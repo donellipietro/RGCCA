@@ -87,10 +87,11 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
       ),
       model_options = rgcca_model_options(
         n_comp = 3,
+        init_strategy = "uniform",
         lambda_selection_weights = model_selection,
         block_deactivation = model_selection,
         connection_deactivation = model_selection,
-        component_significance = model_selection
+        component_significance = FALSE
       ),
       bootstrap_options = rgcca_bootstrap_options(),
       noise = list(
@@ -98,9 +99,7 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
       ),
       regularization = list(
         lambda = lambda_values,
-        lambda_grid = list(
-          10^(-9:-2), 10^(-9:-2), 10^(-9:-2)
-        )
+        lambda_grid = 10^(-9:-2)
       )
     )
 
@@ -263,9 +262,7 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
         ),
         regularization = list(
           lambda = c(-1),
-          lambda_grid = list(
-            10^(-9:-2), 10^(-9:-2), 10^(-9:-2)
-          )
+          lambda_grid = 10^(-9:-2)
         )
       )
 

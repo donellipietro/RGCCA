@@ -309,26 +309,7 @@ create_config_dirs <- function(cfg = get_config()) {
 #' @param cfg Configuration profile list.
 #' @return Character vector of options.
 ipopt_options_lines <- function(cfg = get_config()) {
-  lines <- c(
-    "print_level 0",
-    "sb yes",
-    "print_user_options no",
-    "print_timing_statistics no",
-    "",
-    "hessian_approximation exact",
-    "nlp_scaling_method none",
-    "",
-    "mu_strategy adaptive",
-    "",
-    "tol 1e-9",
-    "",
-    "acceptable_tol 1e-6",
-    "acceptable_iter 10",
-    "",
-    "bound_push 1e-12",
-    "bound_frac 1e-12",
-    "bound_relax_factor 0"
-  )
+  lines <- readLines(file.path(cfg$PATH_CPP, "ipopt.opt.template"), warn = FALSE)
 
   linear_solver <- cfg$IPOPT_LINEAR_SOLVER
   if (!is.null(linear_solver) && nzchar(linear_solver)) {

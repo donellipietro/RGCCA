@@ -63,13 +63,15 @@ test_options <- list(
   model_options = rgcca_model_options(
     n_comp = 3,
     init_strategy = "Uniform",
-    lambda_selection_weights = TRUE
+    lambda_selection_weights = TRUE,
+    block_deactivation = TRUE,
+    connection_deactivation = TRUE
   ),
   bootstrap_options = rgcca_bootstrap_options(
     save_bootstrap_resamples = TRUE
   ),
   noise = list(
-    sigma_noise = 7
+    sigma_noise = 5
   ),
   regularization = list(
     lambda = 1e-4,
@@ -91,7 +93,7 @@ n_comp <- 3
 
 IGNORE_CPP_OUTPUT <- FALSE
 test_options$model_options$n_comp <- n_comp
-results <- fit_model("CPP_fGCCA_cov_FEM", data, path_list, test_options)
+results <- fit_model("CPP_fGCCA_NN_cov_FEM", data, path_list, test_options)
 
 
 if (test_options$model_options$lambda_selection_weights) {

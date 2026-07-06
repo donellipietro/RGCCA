@@ -1,4 +1,3 @@
-
 ## Global variables ----
 
 ## Test suite full name and acronym
@@ -19,8 +18,8 @@ SMOKE_TEST <- isTRUE(SMOKE_TEST) ||
   tolower(Sys.getenv("SMOKE_TEST", "false")) %in% c("1", "true", "yes", "y")
 
 ## C++ output
-IGNORE_CPP_OUTPUT = TRUE
-IGNORE_R_OUTPUT = TRUE
+IGNORE_CPP_OUTPUT <- TRUE
+IGNORE_R_OUTPUT <- TRUE
 
 ## Defaults
 name_main_test_default <- "testSensitivity"
@@ -33,4 +32,4 @@ test_groups <- list(
     "testBootstrap"
   )
 )
-order <- c(1,2,3) # Boxplot grouping | Rows | Cols
+order <- c(1, 2, 3) # Boxplot grouping | Rows | Cols

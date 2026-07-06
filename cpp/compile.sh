@@ -264,10 +264,14 @@ headers_newer_than() {
 
 normalized_compile_jobs() {
   local value="${COMPILE_JOBS:-${MULTITHREAD_CPUS:-1}}"
+  local max_jobs="${1:-}"
 
   if [[ ! "${value}" =~ ^[0-9]+$ || "${value}" -lt 1 ]]; then
     echo "Warning: invalid COMPILE_JOBS='${value}', using 1." >&2
     value=1
+  fi
+  if [[ -n "${max_jobs}" && "${value}" -gt "${max_jobs}" ]]; then
+    value="${max_jobs}"
   fi
 
   printf '%s\n' "${value}"
@@ -359,7 +363,7 @@ compile_model() {
   mkdir -p "${build_dir}"
   ensure_ipopt_options "${build_dir}"
   compile_flags
-  compile_job_limit="$(normalized_compile_jobs)"
+  compile_job_limit="$(normalized_compile_jobs "${#selected_mains[@]}")"
   echo "Compile jobs: ${compile_job_limit}"
 
   compile_pids=()
@@ -380,11 +384,13 @@ compile_model() {
     fi
   done
 
-  for pid in "${compile_pids[@]}"; do
-    if ! wait "${pid}"; then
-      compile_status=1
-    fi
-  done
+  if [[ "${#compile_pids[@]}" -gt 0 ]]; then
+    for pid in "${compile_pids[@]}"; do
+      if ! wait "${pid}"; then
+        compile_status=1
+      fi
+    done
+  fi
   if [[ "${compile_status}" -ne 0 ]]; then
     exit "${compile_status}"
   fi
