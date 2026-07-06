@@ -62,7 +62,7 @@ test_options <- list(
   ),
   model_options = rgcca_model_options(
     n_comp = 4,
-    init = "Uniform",
+    init_strategy = "Uniform",
     lambda_selection_weights = FALSE,
     block_deactivation = TRUE,
     connection_deactivation = TRUE,

@@ -63,7 +63,7 @@ test_options <- list(
   ),
   model_options = rgcca_model_options(
     n_comp = n_comp,
-    init = "Uniform",
+    init_strategy = "Uniform",
     lambda_selection_weights = TRUE
   ),
   bootstrap_options = rgcca_bootstrap_options(

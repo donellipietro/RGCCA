@@ -1,5 +1,7 @@
 #include <fdaPDE/models.h>
 using namespace fdapde;
+using fdapde::rgcca::IndependentSampling;
+using fdapde::rgcca::InitStrategy;
 
 #include "../include/json.hpp"
 using nlohmann::json;
@@ -75,8 +77,8 @@ int main(int argc, char *argv[]) {
   // Bootstrap
   RGCCA<IndependentSampling>::BootstrapConfig bootstrap_config;
   bootstrap_config.patience = 1;
-  bootstrap_config.B_per_thread_per_batch = 5;
-  bootstrap_config.stable_batches_required = 3;
+  bootstrap_config.check_every = 5;
+  bootstrap_config.stable_checks_required = 3;
   bootstrap_config.active_block_tol = 1e-3;
   rgcca_driver::apply_bootstrap_options(jroot["bootstrap_options"],
                                         bootstrap_config);

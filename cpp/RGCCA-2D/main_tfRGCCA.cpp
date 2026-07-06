@@ -1,5 +1,8 @@
 #include <fdaPDE/models.h>
 using namespace fdapde;
+using fdapde::rgcca::IndependentSampling;
+using fdapde::rgcca::InitStrategy;
+using fdapde::rgcca::TimeDependentSampling;
 
 #include "../include/json.hpp"
 using nlohmann::json;

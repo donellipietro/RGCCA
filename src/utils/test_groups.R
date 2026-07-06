@@ -60,7 +60,7 @@ resolve_test_names <- function(test_suite, name_main_test) {
 test_threading_mode <- function(test_options, default = "single") {
   mode <- NULL
   if (!is.null(test_options$test_options)) {
-    mode <- test_options$test_options$threading %||% test_options$test_options$thread_mode
+    mode <- test_options$test_options$threading
   }
   mode <- mode %||% default
   mode <- tolower(as.character(mode[1]))

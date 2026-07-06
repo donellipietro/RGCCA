@@ -231,7 +231,8 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
         cpp_script = "RGCCA",
         test_options = list(
           n_reps = n_reps,
-          varying_options = c("B_max", "sigma_noise")
+          varying_options = c("B_max", "sigma_noise"),
+          threading = "multi"
         ),
         domain_and_locations = list(
           name_mesh = "unit_interval",

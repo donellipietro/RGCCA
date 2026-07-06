@@ -116,35 +116,35 @@ inline std::string read_string_value(const json &value,
   return value.get<std::string>();
 }
 
-inline fdapde::InitStrategy
+inline fdapde::rgcca::InitStrategy
 parse_init_strategy(const std::string &value,
-                    const fdapde::InitStrategy current) {
+                    const fdapde::rgcca::InitStrategy current) {
   if (is_default_token(value)) {
     return current;
   }
   const auto token = normalize_token(value);
   if (token == "none") {
-    return fdapde::InitStrategy::None;
+    return fdapde::rgcca::InitStrategy::None;
   }
   if (token == "svd") {
-    return fdapde::InitStrategy::SVD;
+    return fdapde::rgcca::InitStrategy::SVD;
   }
   if (token == "uniform") {
-    return fdapde::InitStrategy::Uniform;
+    return fdapde::rgcca::InitStrategy::Uniform;
   }
   if (token == "warmstart") {
-    return fdapde::InitStrategy::WarmStart;
+    return fdapde::rgcca::InitStrategy::WarmStart;
   }
   throw std::invalid_argument("Unknown init_strategy: " + value);
 }
 
-inline fdapde::LambdaSelection
-parse_lambda_selection(const json &value, const fdapde::LambdaSelection current,
+inline fdapde::rgcca::LambdaSelection
+parse_lambda_selection(const json &value, const fdapde::rgcca::LambdaSelection current,
                        const std::string &name) {
   if (value.is_boolean() || value.is_number_integer() ||
       value.is_number_unsigned()) {
-    return read_bool_value(value, name) ? fdapde::LambdaSelection::Automatic
-                                        : fdapde::LambdaSelection::Manual;
+    return read_bool_value(value, name) ? fdapde::rgcca::LambdaSelection::Automatic
+                                        : fdapde::rgcca::LambdaSelection::Manual;
   }
   const auto raw = read_string_value(value, name);
   if (is_default_token(raw)) {
@@ -152,103 +152,103 @@ parse_lambda_selection(const json &value, const fdapde::LambdaSelection current,
   }
   const auto token = normalize_token(raw);
   if (token == "manual") {
-    return fdapde::LambdaSelection::Manual;
+    return fdapde::rgcca::LambdaSelection::Manual;
   }
   if (token == "auto" || token == "automatic") {
-    return fdapde::LambdaSelection::Automatic;
+    return fdapde::rgcca::LambdaSelection::Automatic;
   }
   throw std::invalid_argument("Unknown lambda selection: " + raw);
 }
 
-inline fdapde::Mode mode_from_tau(const double tau) {
+inline fdapde::rgcca::Mode mode_from_tau(const double tau) {
   if (tau < 0.0) {
-    return fdapde::Mode::Regularized;
+    return fdapde::rgcca::Mode::Regularized;
   }
   if (tau > 0.5) {
-    return fdapde::Mode::CovMax;
+    return fdapde::rgcca::Mode::CovMax;
   }
-  return fdapde::Mode::CorMax;
+  return fdapde::rgcca::Mode::CorMax;
 }
 
-inline fdapde::Mode parse_mode(const std::string &value,
-                               const fdapde::Mode current) {
+inline fdapde::rgcca::Mode parse_mode(const std::string &value,
+                               const fdapde::rgcca::Mode current) {
   if (is_default_token(value)) {
     return current;
   }
   const auto token = normalize_token(value);
   if (token == "cor" || token == "cormax" || token == "correlation") {
-    return fdapde::Mode::CorMax;
+    return fdapde::rgcca::Mode::CorMax;
   }
   if (token == "regularized" || token == "rgcca" || token == "reg") {
-    return fdapde::Mode::Regularized;
+    return fdapde::rgcca::Mode::Regularized;
   }
   if (token == "cov" || token == "covmax" || token == "covariance") {
-    return fdapde::Mode::CovMax;
+    return fdapde::rgcca::Mode::CovMax;
   }
   throw std::invalid_argument("Unknown mode: " + value);
 }
 
-inline fdapde::WeightSignConstraint
+inline fdapde::rgcca::WeightSignConstraint
 parse_weight_sign_constraint(const std::string &value,
-                             const fdapde::WeightSignConstraint current) {
+                             const fdapde::rgcca::WeightSignConstraint current) {
   if (is_default_token(value)) {
     return current;
   }
   const auto token = normalize_token(value);
   if (token == "none") {
-    return fdapde::WeightSignConstraint::None;
+    return fdapde::rgcca::WeightSignConstraint::None;
   }
   if (token == "nonnegative" || token == "nn") {
-    return fdapde::WeightSignConstraint::NonNegative;
+    return fdapde::rgcca::WeightSignConstraint::NonNegative;
   }
   throw std::invalid_argument("Unknown weight_sign_constraint: " + value);
 }
 
-inline fdapde::Deflation parse_deflation(const std::string &value,
-                                         const fdapde::Deflation current) {
+inline fdapde::rgcca::Deflation parse_deflation(const std::string &value,
+                                         const fdapde::rgcca::Deflation current) {
   if (is_default_token(value)) {
     return current;
   }
   const auto token = normalize_token(value);
   if (token == "none") {
-    return fdapde::Deflation::None;
+    return fdapde::rgcca::Deflation::None;
   }
   if (token == "scores" || token == "score") {
-    return fdapde::Deflation::Scores;
+    return fdapde::rgcca::Deflation::Scores;
   }
   throw std::invalid_argument("Unknown deflation_mode: " + value);
 }
 
-inline fdapde::Scheme parse_scheme(const std::string &value,
-                                   const fdapde::Scheme &current) {
+inline fdapde::rgcca::Scheme parse_scheme(const std::string &value,
+                                   const fdapde::rgcca::Scheme &current) {
   if (is_default_token(value)) {
     return current;
   }
   const auto token = normalize_token(value);
   if (token == "horst") {
-    return fdapde::Scheme::Horst();
+    return fdapde::rgcca::Scheme::Horst();
   }
   if (token == "centroid") {
-    return fdapde::Scheme::Centroid();
+    return fdapde::rgcca::Scheme::Centroid();
   }
   if (token == "factorial") {
-    return fdapde::Scheme::Factorial();
+    return fdapde::rgcca::Scheme::Factorial();
   }
   throw std::invalid_argument("Unknown scheme: " + value);
 }
 
-inline fdapde::ResamplingStrategy
+inline fdapde::rgcca::ResamplingStrategy
 parse_resampling_strategy(const std::string &value,
-                          const fdapde::ResamplingStrategy current) {
+                          const fdapde::rgcca::ResamplingStrategy current) {
   if (is_default_token(value)) {
     return current;
   }
   const auto token = normalize_token(value);
   if (token == "ordinary") {
-    return fdapde::ResamplingStrategy::Ordinary;
+    return fdapde::rgcca::ResamplingStrategy::Ordinary;
   }
   if (token == "stationary") {
-    return fdapde::ResamplingStrategy::Stationary;
+    return fdapde::rgcca::ResamplingStrategy::Stationary;
   }
   throw std::invalid_argument("Unknown resampling_strategy: " + value);
 }
@@ -259,12 +259,11 @@ void apply_rgcca_options(const json &joptions, Options &options,
   options.max_iter =
       read_number_option<int>(joptions, {"max_iter"}, options.max_iter);
   options.tol = read_number_option<double>(joptions, {"tol"}, options.tol);
-  options.verbose = read_bool_option(joptions, {"verbose"}, options.verbose);
   options.cache_covariances = read_bool_option(joptions, {"cache_covariances"},
                                                options.cache_covariances);
   options.bias = read_bool_option(joptions, {"bias"}, options.bias);
 
-  if (const json *value = find_option(joptions, {"init_strategy", "init"})) {
+  if (const json *value = find_option(joptions, {"init_strategy"})) {
     options.init_strategy = parse_init_strategy(
         read_string_value(*value, "init_strategy"), options.init_strategy);
   }
@@ -295,8 +294,8 @@ void apply_rgcca_options(const json &joptions, Options &options,
   const bool non_negative_weights =
       read_bool_option(joptions, {"non_negative_weights"}, false);
   options.weight_sign_constraint =
-      non_negative_weights ? fdapde::WeightSignConstraint::NonNegative
-                           : fdapde::WeightSignConstraint::None;
+      non_negative_weights ? fdapde::rgcca::WeightSignConstraint::NonNegative
+                           : fdapde::rgcca::WeightSignConstraint::None;
   if (const json *value = find_option(joptions, {"weight_sign_constraint"})) {
     const auto raw = read_string_value(*value, "weight_sign_constraint");
     if (!is_default_token(raw)) {
@@ -305,8 +304,7 @@ void apply_rgcca_options(const json &joptions, Options &options,
     }
   }
 
-  if (const json *value =
-          find_option(joptions, {"deflation_mode", "deflation"})) {
+  if (const json *value = find_option(joptions, {"deflation_mode"})) {
     options.deflation_mode = parse_deflation(
         read_string_value(*value, "deflation_mode"), options.deflation_mode);
   }
@@ -325,14 +323,16 @@ void apply_bootstrap_options(const json &joptions, BootstrapConfig &config) {
   const bool explicit_B_min = has_option(joptions, {"B_min"});
   config.B_min = read_number_option<int>(joptions, {"B_min"}, config.B_min);
   config.B_max = read_number_option<int>(joptions, {"B_max"}, config.B_max);
-  config.B_per_thread_per_batch = read_number_option<int>(
-      joptions, {"B_per_thread_per_batch"}, config.B_per_thread_per_batch);
+  config.check_every =
+      read_number_option<int>(joptions, {"check_every"}, config.check_every);
+  config.fit_max_iter =
+      read_number_option<int>(joptions, {"fit_max_iter"}, config.fit_max_iter);
 
   config.adaptive = read_bool_option(joptions, {"adaptive"}, config.adaptive);
   config.adaptive_tol = read_number_option<double>(joptions, {"adaptive_tol"},
                                                    config.adaptive_tol);
-  config.stable_batches_required = read_number_option<int>(
-      joptions, {"stable_batches_required"}, config.stable_batches_required);
+  config.stable_checks_required = read_number_option<int>(
+      joptions, {"stable_checks_required"}, config.stable_checks_required);
   config.active_block_tol = read_number_option<double>(
       joptions, {"active_block_tol"}, config.active_block_tol);
   config.active_connection_sign_stability =
@@ -341,6 +341,13 @@ void apply_bootstrap_options(const json &joptions, BootstrapConfig &config) {
   config.active_connection_min_abs_corr =
       read_number_option<double>(joptions, {"active_connection_min_abs_corr"},
                                  config.active_connection_min_abs_corr);
+  config.aggressive_connection_deactivation = read_bool_option(
+      joptions, {"aggressive_connection_deactivation"},
+      config.aggressive_connection_deactivation);
+  config.min_boots_before_connection_deactivation =
+      read_number_option<int>(
+          joptions, {"min_boots_before_connection_deactivation"},
+          config.min_boots_before_connection_deactivation);
   config.ci_level =
       read_number_option<double>(joptions, {"ci_level"}, config.ci_level);
   config.patience =
@@ -357,9 +364,9 @@ void apply_bootstrap_options(const json &joptions, BootstrapConfig &config) {
   if (const json *value = find_option(joptions, {"stationary_block_length"})) {
     config.stationary_block_length = value->get<double>();
     if (config.stationary_block_length <= 0.0) {
-      config.resampling_strategy = fdapde::ResamplingStrategy::Ordinary;
+      config.resampling_strategy = fdapde::rgcca::ResamplingStrategy::Ordinary;
     } else if (!explicit_resampling) {
-      config.resampling_strategy = fdapde::ResamplingStrategy::Stationary;
+      config.resampling_strategy = fdapde::rgcca::ResamplingStrategy::Stationary;
     }
   }
 
@@ -404,20 +411,20 @@ parse_lambda_grid_weights(const json &joptions) {
 template <typename Model, typename Options>
 void apply_regularization_options(Model &rgcca, const json &joptions,
                                   const Options &options) {
-  if (options.lambda_selection_weights == fdapde::LambdaSelection::Automatic) {
+  if (options.lambda_selection_weights == fdapde::rgcca::LambdaSelection::Automatic) {
     const auto lambda_grid = parse_lambda_grid_weights(joptions);
     if (!lambda_grid.empty()) {
       rgcca.set_lambda_grid_weights(lambda_grid);
     }
   } else {
     const double lambda =
-        read_number_option<double>(joptions, {"lambda_weights", "lambda"}, 0.0);
+        read_number_option<double>(joptions, {"lambda"}, 0.0);
     if (std::isfinite(lambda) && lambda > 0.0) {
       rgcca.set_lambda_weights_all(lambda);
     }
   }
 
-  if (options.lambda_selection_components == fdapde::LambdaSelection::Manual) {
+  if (options.lambda_selection_components == fdapde::rgcca::LambdaSelection::Manual) {
     const double lambda_components =
         read_number_option<double>(joptions, {"lambda_components"},
                                    std::numeric_limits<double>::quiet_NaN());
@@ -475,7 +482,7 @@ bool apply_C_matrix(Model &rgcca, const json &joptions, const int n_blocks) {
 template <typename Options>
 bool bootstrap_selection_requested(const Options &options) {
   return options.block_deactivation || options.connection_deactivation ||
-         options.lambda_selection_weights == fdapde::LambdaSelection::Automatic;
+         options.lambda_selection_weights == fdapde::rgcca::LambdaSelection::Automatic;
 }
 
 inline bool save_bootstrap_resamples(const json &joptions) {
@@ -529,7 +536,7 @@ first_value_column(const Eigen::MatrixBase<Derived> &v) {
 
 inline void
 write_component_diagnostics(const std::string &path_results,
-                            const std::vector<fdapde::Result> &results) {
+                            const std::vector<fdapde::rgcca::Result> &results) {
   Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> diagnostics(
       results.size(), 9);
 

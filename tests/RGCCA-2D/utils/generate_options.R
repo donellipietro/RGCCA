@@ -4,7 +4,7 @@
 # = ========================================================================== =
 
 if (!exists("rgcca_model_options") ||
-    !exists("rgcca_bootstrap_options")) {
+  !exists("rgcca_bootstrap_options")) {
   source("src/utils/rgcca_options.R")
 }
 #' Generate option JSON files for a test suite and test name.
@@ -154,7 +154,8 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
         cpp_script = "RGCCA-2D",
         test_options = list(
           n_reps = n_reps,
-          varying_options = c("stationary_block_length", "sigma_noise")
+          varying_options = c("stationary_block_length", "sigma_noise"),
+          threading = "multi"
         ),
         domain_and_locations = list(
           name_mesh = paste0("region_", 1:4),
@@ -217,7 +218,7 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
       )
       options_list <- lapply(options_list, function(opts_i) {
         if (!is.null(opts_i$bootstrap_options$stationary_block_length) &&
-            opts_i$bootstrap_options$stationary_block_length <= 0) {
+          opts_i$bootstrap_options$stationary_block_length <= 0) {
           opts_i$bootstrap_options$resampling_strategy <- "Ordinary"
         }
         opts_i
