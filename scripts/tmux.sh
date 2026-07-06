@@ -5,17 +5,6 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 SESSION="${SESSION:-RGCCA}"
-PROFILE="${PROFILE:-}"
-
-run_help() {
-  clear
-  make_args=()
-  if [ -n "$PROFILE" ]; then
-    make_args+=("PROFILE=$PROFILE")
-  fi
-  make "${make_args[@]}" help
-  exec "${SHELL:-/bin/bash}"
-}
 
 run_watch() {
   while :; do
@@ -38,7 +27,6 @@ run_watch() {
 }
 
 case "${1:-}" in
-  --help-pane) run_help ;;
   --watch) run_watch ;;
 esac
 
@@ -52,9 +40,7 @@ if tmux has-session -t "$SESSION" 2>/dev/null; then
 fi
 
 tmux new-session -d -s "$SESSION" -n main -c "$ROOT" "clear; exec ${SHELL:-/bin/bash}"
-tmux split-window -h -p 35 -t "$SESSION:main" -c "$ROOT" "./scripts/tmux.sh --help-pane"
-
-tmux new-window -t "$SESSION:" -n watch -c "$ROOT" "./scripts/tmux.sh --watch"
+tmux split-window -h -p 40 -t "$SESSION:main" -c "$ROOT" "./scripts/tmux.sh --watch"
 
 tmux select-window -t "$SESSION:main"
 exec tmux attach -t "$SESSION"

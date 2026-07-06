@@ -342,7 +342,7 @@ inspect_results: ensure_env
 	
 ## Launch the tmux workspace
 tmux:
-	@PROFILE="$(PROFILE)" ./scripts/tmux.sh
+	@./scripts/tmux.sh
 	
 	
 	
