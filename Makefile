@@ -59,7 +59,7 @@ PATH_BUILD := $(call config_value,PATH_BUILD)
         ensure_env \
         compile compile_all compile_slurm compile_all_slurm \
         clean_tmp clean_compiled clean_links clean clean_test distclean \
-        run_test run_test_parallel run_test_slurm inspect_results
+        run_test run_test_parallel run_test_slurm inspect_results tmux
 
 
 ## Build the repository with the active profile
@@ -339,6 +339,10 @@ inspect_results: ensure_env
 		fi; \
 	fi
 
+	
+## Launch the tmux workspace
+tmux:
+	@PROFILE="$(PROFILE)" TEST_SUITE="$(TEST_SUITE)" TEST_NAME="$(TEST_NAME)" ./scripts/tmux.sh
 	
 	
 	
