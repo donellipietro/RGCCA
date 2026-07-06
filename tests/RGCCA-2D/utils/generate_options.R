@@ -87,16 +87,15 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
       ),
       bootstrap_options = rgcca_bootstrap_options(
         B_max = 5000,
-        adaptive = TRUE
+        adaptive = TRUE,
+        stable_checks_required = 10
       ),
       noise = list(
         sigma_noise = c(0, 1, 2, 4, 6)
       ),
       regularization = list(
         lambda = lambda_values,
-        lambda_grid = list(
-          10^(-9:2), 10^(-9:2), 10^(-9:2)
-        )
+        lambda_grid = 10^(-9:2)
       )
     )
 
@@ -180,6 +179,7 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
         bootstrap_options = rgcca_bootstrap_options(
           B_max = 5000,
           adaptive = TRUE,
+          stable_checks_required = 10,
           resampling_strategy = "Stationary",
           stationary_block_length = c(0, 1, 10, 50, 100)
         ),
@@ -188,9 +188,7 @@ generate_options <- function(test_suite, name_main_test, path_queue) {
         ),
         regularization = list(
           lambda = -1,
-          lambda_grid = list(
-            10^(-9:2), 10^(-9:2), 10^(-9:2)
-          )
+          lambda_grid = 10^(-9:2)
         )
       )
 
