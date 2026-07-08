@@ -121,30 +121,34 @@ int main(int argc, char *argv[]) {
 
   // Fit
   const auto results = rgcca.fit();
+  const int n_comp_effective = rgcca.n_comp_effective();
   std::cout << results << std::endl;
+  write_csv(path_results + "n_comp_effective.csv",
+            std::vector<double>{static_cast<double>(n_comp_effective)});
 
   // Save fitted results
   int id = 1;
   for (int j = 0; j < rgcca.blocks().size(); j++) {
     const auto &block = rgcca.blocks()[j];
     write_csv(path_results + "A" + std::to_string(j + 1) + "_hat_locs.csv",
-              block->weights_m());
+              block->weights_m().leftCols(n_comp_effective));
 
     write_csv(path_results + "A_star" + std::to_string(j + 1) + "_hat_locs.csv",
-              block->weights_star_m());
+              block->weights_star_m().leftCols(n_comp_effective));
 
     write_csv(path_results + "E" + std::to_string(j + 1) + "_hat_locs.csv",
-              block->components_m());
+              block->components_m().leftCols(n_comp_effective));
 
     write_csv(path_results + "A" + std::to_string(j + 1) + "_hat_grid.csv",
-              Psi_grid_D_vec[j] * block->weights());
+              Psi_grid_D_vec[j] * block->weights().leftCols(n_comp_effective));
 
     write_csv(path_results + "A_star" + std::to_string(j + 1) + "_hat_grid.csv",
-              Psi_grid_D_vec[j] * block->weights_star());
+              Psi_grid_D_vec[j] *
+                  block->weights_star().leftCols(n_comp_effective));
   }
 
   // Save component-wise fit info
-  for (int h = 0; h < n_comp; ++h) {
+  for (std::size_t h = 0; h < results.size(); ++h) {
     write_csv(path_results + "objective" + std::to_string(h + 1) + ".csv",
               results[h].obj_history);
 

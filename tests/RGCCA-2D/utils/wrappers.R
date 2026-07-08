@@ -405,6 +405,10 @@ CPP_RGCCA <- function(model_name, data, test_options, path_list) {
   A_star_locs <- list()
   A_grid <- list()
   A_star_grid <- list()
+  n_comp_effective <- read_vector_if_exists(file.path(path_tmp_results, "n_comp_effective.csv"))
+  if (!is.null(n_comp_effective) && length(n_comp_effective) > 0) {
+    n_comp <- as.integer(n_comp_effective[1])
+  }
   for (g in 1:n_groups) {
     E_locs[[g]] <- as.matrix(read.csv(paste(path_tmp_results, "E", g, "_hat_locs.csv", sep = "")))
     A_locs[[g]] <- as.matrix(read.csv(paste(path_tmp_results, "A", g, "_hat_locs.csv", sep = "")))
@@ -412,6 +416,9 @@ CPP_RGCCA <- function(model_name, data, test_options, path_list) {
     if (grid_D) A_grid[[g]] <- as.matrix(read.csv(paste(path_tmp_results, "A", g, "_hat_grid.csv", sep = "")))
     if (grid_D) A_star_grid[[g]] <- as.matrix(read.csv(paste(path_tmp_results, "A_star", g, "_hat_grid.csv", sep = "")))
     if (grid_T) E_grid[[g]] <- as.matrix(read.csv(paste(path_tmp_results, "E", g, "_hat_grid.csv", sep = "")))
+    if (g == 1 && is.null(n_comp_effective)) {
+      n_comp <- ncol(A_locs[[g]])
+    }
 
     sim <- abs(var(data$A_locs[[g]][, 1:n_comp], A_locs[[g]]))
     perm <- solve_LSAP(sim, maximum = TRUE)

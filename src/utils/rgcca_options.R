@@ -354,6 +354,8 @@ rgcca_model_option_defaults <- function() {
     block_deactivation = FALSE,
     connection_deactivation = FALSE,
     component_significance = FALSE,
+    block_importance = FALSE,
+    inactive_block_signal_test = FALSE,
     mode = "Default",
     weight_sign_constraint = "Default",
     deflation_mode = "Scores",
@@ -390,6 +392,8 @@ rgcca_bootstrap_option_defaults <- function() {
     seed = 12345,
     max_threads = rgcca_max_threads(),
     check_every = 5,
+    check_every_block_deactivation = 1,
+    check_every_connection_deactivation = 100,
     fit_max_iter = -1,
     adaptive = TRUE,
     adaptive_tol = 1e-3,
@@ -397,11 +401,14 @@ rgcca_bootstrap_option_defaults <- function() {
     active_block_tol = 1e-8,
     active_connection_sign_stability = 0.95,
     active_connection_min_abs_corr = 0.05,
-    min_boots_before_connection_deactivation = 100,
     ci_level = 0.95,
     patience = 1,
     component_significance_resamples = 100,
     component_significance_alpha = 0.05,
+    block_importance_resamples = 100,
+    block_importance_alpha = 0.05,
+    inactive_block_signal_resamples = 100,
+    inactive_block_signal_alpha = 0.05,
     save_bootstrap_resamples = FALSE
   )
 }
@@ -432,8 +439,9 @@ collect_cpp_model_options <- function(model_options) {
   option_names <- c(
     "max_iter", "tol", "cache_covariances", "bias",
     "init_strategy",
-    "lambda_selection_components", "lambda_components",
+    "lambda_selection_weights", "lambda_selection_components", "lambda_components",
     "block_deactivation", "connection_deactivation", "component_significance",
+    "block_importance", "inactive_block_signal_test",
     "mode", "weight_sign_constraint", "deflation_mode", "scheme"
   )
 
@@ -456,16 +464,21 @@ collect_cpp_bootstrap_options <- function(bootstrap_options) {
   option_names <- c(
     "seed", "max_threads", "B_min",
     "B_max", "check_every", "fit_max_iter",
+    "check_every_block_deactivation",
+    "check_every_connection_deactivation",
     "adaptive", "adaptive_tol",
     "stable_checks_required", "active_block_tol",
     "active_connection_sign_stability",
     "active_connection_min_abs_corr",
-    "min_boots_before_connection_deactivation",
     "ci_level",
     "patience", "resampling_strategy",
     "stationary_block_length",
     "component_significance_resamples",
     "component_significance_alpha",
+    "block_importance_resamples",
+    "block_importance_alpha",
+    "inactive_block_signal_resamples",
+    "inactive_block_signal_alpha",
     "save_bootstrap_resamples"
   )
 
@@ -688,7 +701,11 @@ load_cpp_diagnostics <- function(path_results, n_comp) {
     lambda_components = vector("list", n_comp),
     lambda_weights = rep(NA_real_, n_comp),
     C = vector("list", n_comp),
-    active_blocks = vector("list", n_comp)
+    active_blocks = vector("list", n_comp),
+    block_importance = vector("list", n_comp),
+    block_importance_p_values = vector("list", n_comp),
+    block_importance_significant = vector("list", n_comp),
+    inactive_block_signal_actions = vector("list", n_comp)
   )
 
   for (h in seq_len(n_comp)) {
@@ -724,6 +741,23 @@ load_cpp_diagnostics <- function(path_results, n_comp) {
       active_blocks_h <- as.logical(active_blocks_h)
     }
     out$active_blocks[[h]] <- active_blocks_h
+
+    out$block_importance[[h]] <- read_vector_if_exists(
+      file.path(path_results, paste0("block_importance", h, ".csv"))
+    )
+    out$block_importance_p_values[[h]] <- read_vector_if_exists(
+      file.path(path_results, paste0("block_importance_p_values", h, ".csv"))
+    )
+    block_importance_significant_h <- read_vector_if_exists(
+      file.path(path_results, paste0("block_importance_significant", h, ".csv"))
+    )
+    if (!is.null(block_importance_significant_h)) {
+      block_importance_significant_h <- as.logical(block_importance_significant_h)
+    }
+    out$block_importance_significant[[h]] <- block_importance_significant_h
+    out$inactive_block_signal_actions[[h]] <- read_vector_if_exists(
+      file.path(path_results, paste0("inactive_block_signal_actions", h, ".csv"))
+    )
   }
 
   out
@@ -759,6 +793,18 @@ attach_cpp_diagnostics <- function(model, diagnostics, n_comp, n_groups = NULL) 
   }
   if (list_has_values(diagnostics$active_blocks)) {
     model$model_selection$active_blocks <- diagnostics$active_blocks
+  }
+  if (list_has_values(diagnostics$block_importance)) {
+    model$model_selection$block_importance <- diagnostics$block_importance
+  }
+  if (list_has_values(diagnostics$block_importance_p_values)) {
+    model$model_selection$block_importance_p_values <- diagnostics$block_importance_p_values
+  }
+  if (list_has_values(diagnostics$block_importance_significant)) {
+    model$model_selection$block_importance_significant <- diagnostics$block_importance_significant
+  }
+  if (list_has_values(diagnostics$inactive_block_signal_actions)) {
+    model$model_selection$inactive_block_signal_actions <- diagnostics$inactive_block_signal_actions
   }
   if (!is.null(diagnostics$component_diagnostics)) {
     model$diagnostics$component_diagnostics <- diagnostics$component_diagnostics
@@ -963,6 +1009,8 @@ load_cpp_bootstrap_selection <- function(path_results, n_comp, n_groups, grid_D 
 #' @param block_deactivation Whether bootstrap block deactivation is enabled.
 #' @param connection_deactivation Whether bootstrap connection deactivation is enabled.
 #' @param component_significance Whether component significance is estimated.
+#' @param block_importance Whether block importance is estimated.
+#' @param inactive_block_signal_test Whether inactive-block residual signal gating is enabled.
 #' @param mode RGCCA mode token.
 #' @param weight_sign_constraint Weight sign constraint token.
 #' @param deflation_mode Deflation mode.
@@ -989,6 +1037,8 @@ rgcca_model_options <- function(n_comp = 3,
                                 block_deactivation = FALSE,
                                 connection_deactivation = FALSE,
                                 component_significance = FALSE,
+                                block_importance = FALSE,
+                                inactive_block_signal_test = FALSE,
                                 mode = "Default",
                                 weight_sign_constraint = "Default",
                                 deflation_mode = "Scores",
@@ -1059,6 +1109,8 @@ rgcca_model_options <- function(n_comp = 3,
     block_deactivation = block_deactivation,
     connection_deactivation = connection_deactivation,
     component_significance = component_significance,
+    block_importance = block_importance,
+    inactive_block_signal_test = inactive_block_signal_test,
     mode = mode,
     weight_sign_constraint = weight_sign_constraint,
     deflation_mode = deflation_mode,
@@ -1095,6 +1147,8 @@ rgcca_model_options <- function(n_comp = 3,
 #' @param seed Bootstrap random seed.
 #' @param max_threads Maximum number of bootstrap worker threads.
 #' @param check_every Bootstrap resamples between adaptive checks.
+#' @param check_every_block_deactivation Bootstrap checks between block-deactivation attempts.
+#' @param check_every_connection_deactivation Bootstrap checks between connection-deactivation attempts.
 #' @param fit_max_iter Bootstrap fit iteration cap, or -1 to use model max_iter.
 #' @param adaptive Whether adaptive bootstrap stopping is enabled.
 #' @param adaptive_tol Adaptive stopping tolerance.
@@ -1102,11 +1156,14 @@ rgcca_model_options <- function(n_comp = 3,
 #' @param active_block_tol Active-block tolerance.
 #' @param active_connection_sign_stability Sign-stability threshold for active connections.
 #' @param active_connection_min_abs_corr Minimum absolute correlation for active connections.
-#' @param min_boots_before_connection_deactivation Minimum resamples before deactivating connections.
 #' @param ci_level Confidence interval level.
 #' @param patience Adaptive-stopping patience.
 #' @param component_significance_resamples Component-significance resample count.
 #' @param component_significance_alpha Component-significance alpha.
+#' @param block_importance_resamples Block-importance resample count.
+#' @param block_importance_alpha Block-importance alpha.
+#' @param inactive_block_signal_resamples Residual-signal gate resample count.
+#' @param inactive_block_signal_alpha Residual-signal gate alpha.
 #' @param save_bootstrap_resamples Whether bootstrap resamples are saved.
 #' @param include_defaults Whether missing options should be filled from defaults.
 #' @return The value produced by `rgcca_bootstrap_options`.
@@ -1117,6 +1174,8 @@ rgcca_bootstrap_options <- function(B_max = 15000,
                                     seed = 12345,
                                     max_threads = rgcca_max_threads(),
                                     check_every = 100,
+                                    check_every_block_deactivation = 1,
+                                    check_every_connection_deactivation = 100,
                                     fit_max_iter = 100,
                                     adaptive = TRUE,
                                     adaptive_tol = 1e-3,
@@ -1124,11 +1183,14 @@ rgcca_bootstrap_options <- function(B_max = 15000,
                                     active_block_tol = 0.1,
                                     active_connection_sign_stability = 0.95,
                                     active_connection_min_abs_corr = 0.05,
-                                    min_boots_before_connection_deactivation = 100,
                                     ci_level = 0.95,
                                     patience = 1,
                                     component_significance_resamples = 100,
                                     component_significance_alpha = 0.05,
+                                    block_importance_resamples = 100,
+                                    block_importance_alpha = 0.05,
+                                    inactive_block_signal_resamples = 100,
+                                    inactive_block_signal_alpha = 0.05,
                                     save_bootstrap_resamples = FALSE,
                                     include_defaults = TRUE) {
   supplied_options <- setdiff(
@@ -1148,6 +1210,8 @@ rgcca_bootstrap_options <- function(B_max = 15000,
     seed = seed,
     max_threads = max_threads,
     check_every = check_every,
+    check_every_block_deactivation = check_every_block_deactivation,
+    check_every_connection_deactivation = check_every_connection_deactivation,
     fit_max_iter = fit_max_iter,
     adaptive = adaptive,
     adaptive_tol = adaptive_tol,
@@ -1155,11 +1219,14 @@ rgcca_bootstrap_options <- function(B_max = 15000,
     active_block_tol = active_block_tol,
     active_connection_sign_stability = active_connection_sign_stability,
     active_connection_min_abs_corr = active_connection_min_abs_corr,
-    min_boots_before_connection_deactivation = min_boots_before_connection_deactivation,
     ci_level = ci_level,
     patience = patience,
     component_significance_resamples = component_significance_resamples,
     component_significance_alpha = component_significance_alpha,
+    block_importance_resamples = block_importance_resamples,
+    block_importance_alpha = block_importance_alpha,
+    inactive_block_signal_resamples = inactive_block_signal_resamples,
+    inactive_block_signal_alpha = inactive_block_signal_alpha,
     save_bootstrap_resamples = save_bootstrap_resamples
   )
   if (!isTRUE(include_defaults)) {

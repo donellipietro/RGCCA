@@ -281,6 +281,11 @@ void apply_rgcca_options(const json &joptions, Options &options,
 
   options.component_significance = read_bool_option(
       joptions, {"component_significance"}, options.component_significance);
+  options.block_importance =
+      read_bool_option(joptions, {"block_importance"}, options.block_importance);
+  options.inactive_block_signal_test =
+      read_bool_option(joptions, {"inactive_block_signal_test"},
+                       options.inactive_block_signal_test);
   options.block_deactivation = read_bool_option(
       joptions, {"block_deactivation"}, options.block_deactivation);
   options.connection_deactivation = read_bool_option(
@@ -325,6 +330,12 @@ void apply_bootstrap_options(const json &joptions, BootstrapConfig &config) {
   config.B_max = read_number_option<int>(joptions, {"B_max"}, config.B_max);
   config.check_every =
       read_number_option<int>(joptions, {"check_every"}, config.check_every);
+  config.check_every_block_deactivation = read_number_option<int>(
+      joptions, {"check_every_block_deactivation"},
+      config.check_every_block_deactivation);
+  config.check_every_connection_deactivation = read_number_option<int>(
+      joptions, {"check_every_connection_deactivation"},
+      config.check_every_connection_deactivation);
   config.fit_max_iter =
       read_number_option<int>(joptions, {"fit_max_iter"}, config.fit_max_iter);
 
@@ -341,10 +352,6 @@ void apply_bootstrap_options(const json &joptions, BootstrapConfig &config) {
   config.active_connection_min_abs_corr =
       read_number_option<double>(joptions, {"active_connection_min_abs_corr"},
                                  config.active_connection_min_abs_corr);
-  config.min_boots_before_connection_deactivation =
-      read_number_option<int>(
-          joptions, {"min_boots_before_connection_deactivation"},
-          config.min_boots_before_connection_deactivation);
   config.ci_level =
       read_number_option<double>(joptions, {"ci_level"}, config.ci_level);
   config.patience =
@@ -373,6 +380,18 @@ void apply_bootstrap_options(const json &joptions, BootstrapConfig &config) {
   config.component_significance_alpha =
       read_number_option<double>(joptions, {"component_significance_alpha"},
                                  config.component_significance_alpha);
+  config.block_importance_resamples =
+      read_number_option<int>(joptions, {"block_importance_resamples"},
+                              config.block_importance_resamples);
+  config.block_importance_alpha =
+      read_number_option<double>(joptions, {"block_importance_alpha"},
+                                 config.block_importance_alpha);
+  config.inactive_block_signal_resamples =
+      read_number_option<int>(joptions, {"inactive_block_signal_resamples"},
+                              config.inactive_block_signal_resamples);
+  config.inactive_block_signal_alpha =
+      read_number_option<double>(joptions, {"inactive_block_signal_alpha"},
+                                 config.inactive_block_signal_alpha);
 
   if (!explicit_B_min && config.B_max > 0 && config.B_min > config.B_max) {
     config.B_min = config.B_max;
@@ -508,7 +527,26 @@ bool_vector_to_double_column(const std::vector<bool> &v) {
 }
 
 inline Eigen::Matrix<double, Eigen::Dynamic, 1>
+double_vector_to_column(const std::vector<double> &v) {
+  Eigen::Matrix<double, Eigen::Dynamic, 1> out(v.size());
+  for (std::size_t i = 0; i < v.size(); ++i) {
+    out(static_cast<int>(i)) = v[i];
+  }
+  return out;
+}
+
+inline Eigen::Matrix<double, Eigen::Dynamic, 1>
 int_vector_to_double_column(const std::vector<int> &v) {
+  Eigen::Matrix<double, Eigen::Dynamic, 1> out(v.size());
+  for (std::size_t i = 0; i < v.size(); ++i) {
+    out(static_cast<int>(i)) = static_cast<double>(v[i]);
+  }
+  return out;
+}
+
+inline Eigen::Matrix<double, Eigen::Dynamic, 1>
+inactive_block_signal_actions_to_double_column(
+    const std::vector<fdapde::rgcca::InactiveBlockSignalAction> &v) {
   Eigen::Matrix<double, Eigen::Dynamic, 1> out(v.size());
   for (std::size_t i = 0; i < v.size(); ++i) {
     out(static_cast<int>(i)) = static_cast<double>(v[i]);
@@ -535,7 +573,7 @@ inline void
 write_component_diagnostics(const std::string &path_results,
                             const std::vector<fdapde::rgcca::Result> &results) {
   Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> diagnostics(
-      results.size(), 9);
+      results.size(), 10);
 
   for (std::size_t h = 0; h < results.size(); ++h) {
     const auto &result = results[h];
@@ -544,12 +582,26 @@ write_component_diagnostics(const std::string &path_results,
     fdapde::write_csv(path_results + "active_blocks" + std::to_string(h + 1) +
                           ".csv",
                       bool_vector_to_double_column(result.active_blocks));
+    fdapde::write_csv(path_results + "block_importance" +
+                          std::to_string(h + 1) + ".csv",
+                      double_vector_to_column(result.block_importance));
+    fdapde::write_csv(path_results + "block_importance_p_values" +
+                          std::to_string(h + 1) + ".csv",
+                      double_vector_to_column(result.block_importance_p_values));
+    fdapde::write_csv(path_results + "block_importance_significant" +
+                          std::to_string(h + 1) + ".csv",
+                      bool_vector_to_double_column(
+                          result.block_importance_significant));
+    fdapde::write_csv(path_results + "inactive_block_signal_actions" +
+                          std::to_string(h + 1) + ".csv",
+                      inactive_block_signal_actions_to_double_column(
+                          result.inactive_block_signal_actions));
 
     const double final_objective =
         result.obj_history.empty() ? std::numeric_limits<double>::quiet_NaN()
                                    : result.obj_history.back();
     diagnostics(static_cast<int>(h), 0) = static_cast<double>(h + 1);
-    diagnostics(static_cast<int>(h), 1) = static_cast<double>(result.J);
+    diagnostics(static_cast<int>(h), 1) = static_cast<double>(result.n_blocks);
     diagnostics(static_cast<int>(h), 2) = static_cast<double>(result.iters);
     diagnostics(static_cast<int>(h), 3) = result.monotone ? 1.0 : 0.0;
     diagnostics(static_cast<int>(h), 4) = final_objective;
@@ -559,13 +611,16 @@ write_component_diagnostics(const std::string &path_results,
         static_cast<double>(result.rho_tot_bootstrap_count);
     diagnostics(static_cast<int>(h), 8) =
         result.component_significant ? 1.0 : 0.0;
+    diagnostics(static_cast<int>(h), 9) =
+        static_cast<double>(result.block_importance_bootstrap_count);
   }
 
   fdapde::write_csv(path_results + "component_diagnostics.csv", diagnostics,
                     std::vector<std::string>{"component", "n_blocks", "iters",
                                              "monotone", "objective", "rho_tot",
                                              "p_value", "bootstrap_count",
-                                             "significant"});
+                                             "significant",
+                                             "block_importance_bootstrap_count"});
 }
 
 template <typename BootstrapResult>

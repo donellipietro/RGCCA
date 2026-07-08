@@ -115,7 +115,10 @@ int main(int argc, char *argv[]) {
 
   // Fit
   const auto results = rgcca.fit();
+  const int n_comp_effective = rgcca.n_comp_effective();
   std::cout << results << std::endl;
+  write_csv(path_results + "n_comp_effective.csv",
+            std::vector<double>{static_cast<double>(n_comp_effective)});
 
   BsSpace Bh_T(I_T, 3);
   sparse_matrix_t Psi_grid_T = internals::point_basis_eval(Bh_T, grid_T);
@@ -124,21 +127,23 @@ int main(int argc, char *argv[]) {
   int id = 1;
   for (const auto &block : rgcca.blocks()) {
     write_csv(path_results + "A" + std::to_string(id) + "_hat_locs.csv",
-              block->weights_m());
+              block->weights_m().leftCols(n_comp_effective));
     write_csv(path_results + "A_star" + std::to_string(id) + "_hat_locs.csv",
-              block->weights_star_m());
+              block->weights_star_m().leftCols(n_comp_effective));
     write_csv(path_results + "E" + std::to_string(id) + "_hat_locs.csv",
-              block->components_m());
+              block->components_m().leftCols(n_comp_effective));
     write_csv(path_results + "E" + std::to_string(id) + "_hat_grid.csv",
-              Psi_grid_T * block->components());
+              Psi_grid_T * block->components().leftCols(n_comp_effective));
     write_csv(path_results + "A" + std::to_string(id) + "_hat_grid.csv",
-              Psi_grid_D_vec[id - 1] * block->weights());
+              Psi_grid_D_vec[id - 1] *
+                  block->weights().leftCols(n_comp_effective));
     write_csv(path_results + "A_star" + std::to_string(id) + "_hat_grid.csv",
-              Psi_grid_D_vec[id - 1] * block->weights_star());
+              Psi_grid_D_vec[id - 1] *
+                  block->weights_star().leftCols(n_comp_effective));
     id++;
   }
 
-  for (int h = 0; h < n_comp; h++) {
+  for (std::size_t h = 0; h < results.size(); h++) {
     write_csv(path_results + "objective" + std::to_string(h + 1) + ".csv",
               results[h].obj_history);
     write_csv(path_results + "covariance_matrix" + std::to_string(h + 1) +
